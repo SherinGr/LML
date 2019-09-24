@@ -23,6 +23,7 @@ What you will read below this is my personal roadmap to becoming proficient at M
 * PyTorch (similar to Tensorflow, not graph based)
 * Scikit (standard machine learning, like simple classifiers)
 * Keras (deep learning library)
+* Pandas (data analysis, for example importing CSV files)
 
 ## Links with tutorials and other material:
 * [Tensorflow Tutorials covering many concepts](https://www.tensorflow.org/tutorials)
