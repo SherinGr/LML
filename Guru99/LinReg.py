@@ -87,7 +87,7 @@ train_input = tf.estimator.inputs.numpy_input_fn(x={'x': train_feat},
                                                  shuffle=False,
                                                  num_epochs=None)
 
-eval_input = tf.estimator.inputs.numpy_input_fn(x={'x':test_feat},
+eval_input = tf.estimator.inputs.numpy_input_fn(x={'x': test_feat},
                                                 y=test_lab,
                                                 shuffle=False,
                                                 batch_size=128,
