@@ -1,5 +1,5 @@
 # Learning Machine Learning
----
+
 ## What is this repository?
 This repository contains my implementations of ML algorithms. These are exercises for me to become proficient in using different API's and languages (e.g. Tensorflow, PyTorch). My "mother tongue" in programming is Python. After a while this repository might also be extended to examples in C++.
 
