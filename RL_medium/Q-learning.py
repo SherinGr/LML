@@ -11,7 +11,7 @@ env = gym.make('FrozenLake-v0')
 Q_table = np.zeros([env.observation_space.n, env.action_space.n])
 # Learning parameters
 lr = .8  # learning rate
-g = .95  #forgetting factor/discount rate
+g = .95  # forgetting factor/discount rate
 
 num_episodes = 2000
 
