@@ -37,7 +37,7 @@ f, axes = plt.subplots(1, 2)
 #sns.distplot(data.usd_pledged)
 #sns.distplot(data.backers_count)
 
-sns.scatterplot(x=data.goal, y=data.converted_pledged_amount, hue=data.funded)
+sns.scatterplot(x=data.goal, y=data.converted_pledged_amount, hue=data.funded, ax=axes[0])
 
 #sns.countplot(data.currency, hue=data.funded)
 # very skewed towards USD, maybe make binary (USD or not USD), but check labels first.
