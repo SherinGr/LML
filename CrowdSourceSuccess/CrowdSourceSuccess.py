@@ -106,3 +106,5 @@ ax.contourf(xx, yy, z, alpha=0.8)
 # Already 91% accuracy (?)
 
 # Better turn this into a new feature, subtract the two, make it binary <0 or >0.
+
+# Make it harder by removing one of the two features.
