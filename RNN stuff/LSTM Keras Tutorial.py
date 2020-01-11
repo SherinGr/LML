@@ -50,7 +50,7 @@ def load_data():
 train_data, valid_data, test_data, vocab_size, reversed_dictionary = load_data()
 
 
-class BatchGenerator(object):
+class BatchGenerator:
     def __init__(self, data, num_steps, batch_size, vocab_size, skip_step=5):
         self.data = data
         self.num_steps = num_steps  # number of words per sample
@@ -67,10 +67,10 @@ class BatchGenerator(object):
 
         while True:  # when does this become false?
             for i in range(self.batch_size):
-                if self.current_idx + self.num_steps >= len(self.data)
+                if self.current_idx + self.num_steps >= len(self.data):
                     self.current_idx = 0  # end of data reached
 
-                x[i,:] = self.data[self.current_idx:self.current_idx + self.num_steps]
+                x[i, :] = self.data[self.current_idx:self.current_idx + self.num_steps]
                 # one-hot encoding for y:
                 temp_y = self.data[self.current_idx + 1: self.current_idx + self.num_steps + 1]
                 y[i, :, :] = to_categorical(temp_y, num_classes=self.vocab_size)
