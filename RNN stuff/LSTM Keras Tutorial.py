@@ -61,6 +61,8 @@ class BatchGenerator:
         self.current_idx = 0
 
     def generate(self):
+        """ This function is an infinite generator of batches. If you use the keras fit_generator function,
+        this function will be called once for each batch."""
         # x is the current sample, y is the prediction i.e. x shifted 1 word forward
         x = np.zeros((self.batch_size, self.num_steps))
         y = np.zeros((self.batch_size, self.num_steps, self.vocab))
@@ -102,7 +104,7 @@ if use_dropout:
 model.add(TimeDistributed(Dense(vocab_size)))
 model.add(Activation('softmax'))
 
-model.compile(loss='categorical_crossentropy', optimizer='adam', metric=['categorical_accuracy'])
+model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['categorical_accuracy'])
 
 # Train the model using batches (otherwise could use .fit):
 checkpointer = ModelCheckpoint(filepath=data_path + '/model-{epoch:02d}.hdf5', verbose=1)
