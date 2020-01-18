@@ -1,0 +1,39 @@
+import indicators as ind
+import mplfinance as mpf
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# For plotting candlesticks:
+import plotly.graph_objects as go
+# And to render interactive plots from plotly in your browser:
+import plotly.io as pio
+pio.renderers.default = "browser"
+
+from data_processing import load_data
+
+"Constants"
+time_frame = '15m'
+
+candles = load_data(time_frame=time_frame)
+candles['DateTime'] = pd.to_datetime(candles['close timestamp'], unit='s')
+candles = candles.set_index(['DateTime'])
+candles = candles.drop(columns=['close timestamp'])
+
+candles = candles.rename(columns={'open': 'Open',
+                                  'close': 'Close',
+                                  'low': 'Low',
+                                  'high': 'High',
+                                  'volume base': 'Volume'})
+
+MA_20 = ind.MovingAverage(window_length=20, time_frame='15m')
+MA_20.batch_fit(np.array(candles))
+
+# Let us plot some candles to see what we are dealing with:
+# TODO: Merge these two plots in the same figure
+plt.subplot(121)
+plt.subplot(121, candles.index[MA_20.window_length:], MA_20.history)
+axis = plt.gca()
+mpf.plot(candles, mav=20, type='candle', volume=True)
+
+
