@@ -1,4 +1,7 @@
 # This file defines the indicators that can be used in a trading strategy
+#
+# In case you are interested in a more elaborate library check out tulipy
+
 import numpy as np
 import warnings
 from scipy.linalg import toeplitz
@@ -22,27 +25,31 @@ class MovingAverage:
         self.aspect_dict = {'O': 0, 'H': 1, 'L': 2, 'C': 3}
 
         self.memory = deque([], maxlen=self.window_length)  # candle aspects inside the window
-        self.history = [1,2]                                   # history of all MA values calculated
+        self.history = []                                   # history of all MA values calculated
 
     def update(self, new_candle):
         """ Adds a new value to the moving average line
 
         INPUTS: new_candle must be a list or np.array with OHLC values
 
-        TODO: For a later version, only update if the timeframe matches
+        TODO: For a later version, only update if the time_frame matches
+        TODO: For a later version, change input to pandas.df to robustly verify which aspect you extract
         """
+        new_candle = np.array(new_candle)
+
         # Add the new candle aspect to the memory:
-        self.memory.appendleft(new_candle(self.aspect_dict[self.aspect]))
+        self.memory.append(new_candle[self.aspect_dict[self.aspect]])
         # Calculate the MA from the new deque:
         new_value = sum(list(self.memory))/self.window_length
         # Add the new value to the MA history:
-        self.history = [new_value] + self.history
+        self.history = self.history + [new_value]
 
         return new_value
 
     def batch_fit(self, candle_batch):
         """ Fit the moving average of a batch of candles"""
-        # TODO: Write this function (use reshape and matrix to do it in one go!
+        candle_batch = np.array(candle_batch)  # in case we get a dataFrame input
+
         if self.history:
             self.history = []
             warnings.warn('Old MA data has been removed! Make sure that this was your intention', UserWarning)
@@ -54,6 +61,7 @@ class MovingAverage:
         c = prices[self.window_length:]
         price_matrix = toeplitz(c, r)
         self.history = np.ndarray.sum(price_matrix, axis=1)/self.window_length
+
 
 class ExponentialMovingAverage(MovingAverage):
     def __init__(self, window_length, time_frame, aspect='C'):
@@ -67,7 +75,7 @@ class ExponentialMovingAverage(MovingAverage):
         new_ma = MovingAverage.update(self, new_candle)
         # New EMA value:
         new_ema = new_ma*self.coefficient + self.ema_history[0]*(1-self.coefficient)
-        self.ema_history = [new_ema] + self.ema_history
+        self.ema_history = self.ema_history + [new_ema]
 
     def batch_fit(self, candle_batch):
         # TODO: write this
@@ -87,26 +95,50 @@ class MACD:
 
 
 class RSI:
+    # TODO: Values do not match tradingview yet.
     def __init__(self, window_length=14):
         self.window_length = window_length
-        self.memory = deque([],maxlen=window_length+1)
+        self.memory = deque([0]*(window_length+1), maxlen=window_length+1)
         self.history = []
 
+        self.average_gain = 0
+        self.average_loss = 0
+
     def update(self, new_candle):
+        # TODO: if you only accept pandas df input you can verify what is the close value
         new_close = new_candle[3]  # hard coded, close should be the third value following OHLC convention
+        self.memory.append(new_close)
 
-        self.memory.appendleft(new_close)
-        # Find the differences between each candle and the preceding one:
         close_values = np.array(self.memory)
-        changes = close_values[:-1] - close_values[1:]
-        # Calculate the total amount of up and down differences:
-        up_sum = sum(changes*(changes>0))
-        down_sum= abs(sum(changes*(changes<=0)))
+        change = close_values[-2]-close_values[-1]
 
-        new_value = 100 - 100/(1 + up_sum/down_sum)
-        self.history = [new_value] + self.history
-        # TODO: Not 100% if not a second smoothing is needed
+        # Calculate gain and loss (0 if change is not the right sign)
+        gain = change*(change > 0)
+        loss = change*(change < 0)
 
+        self.average_gain = (self.average_gain*(self.window_length-1)+gain)/self.window_length
+        self.average_loss = (self.average_loss*(self.window_length-1)+abs(loss))/self.window_length
+
+        try:
+            relative_strength = self.average_gain/self.average_loss
+            new_rsi = 100 - 100 / (1 + relative_strength)
+        except ZeroDivisionError:
+            new_rsi = 100
+
+        self.history = self.history + [new_rsi]
+
+    def batch_fit(self, candle_batch):
+        candle_batch = np.array(candle_batch)
+        batch_size = candle_batch.shape[0]
+
+        if self.history:
+            self.history = []
+            warnings.warn('Old RSI data has been removed! Make sure that this was your intention', UserWarning)
+
+        # TODO: you can calculate it all go as well using toeplitzes etc.
+        for i in range(batch_size):
+            self.update(candle_batch[i, :])
 
 class StochasticRSI(RSI):
     pass
+

@@ -26,14 +26,24 @@ candles = candles.rename(columns={'open': 'Open',
                                   'high': 'High',
                                   'volume base': 'Volume'})
 
-MA_20 = ind.MovingAverage(window_length=20, time_frame='15m')
-MA_20.batch_fit(np.array(candles))
+MA_26 = ind.MovingAverage(window_length=26, time_frame=time_frame)
+MA_26.batch_fit(candles)
+MA_13 = ind.MovingAverage(window_length=13, time_frame=time_frame)
+MA_13.batch_fit(candles)
+
+RSI = ind.RSI()
+RSI.batch_fit(candles)
+
+t = candles.index  # time vector for plotting
 
 # Let us plot some candles to see what we are dealing with:
-# TODO: Merge these two plots in the same figure
-plt.subplot(121)
-plt.subplot(121, candles.index[MA_20.window_length:], MA_20.history)
-axis = plt.gca()
+
+# TODO: Plot +2 and +3 ATR, BB, 26 and 13 EMA, Stochastic RSI
+
+fig, (ax1, ax2) = plt.subplots(2, 1, sharex='True')
+ax1.plot(t[MA_26.window_length:], MA_26.history)
+ax2.plot(t, RSI.history)
+# TODO: Merge this last plot in the same figure
 mpf.plot(candles, mav=20, type='candle', volume=True)
 
 
