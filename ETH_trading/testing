@@ -10,12 +10,14 @@ import plotly.graph_objects as go
 import plotly.io as pio
 pio.renderers.default = "browser"
 
-from data_processing import load_data
+from data_processing import *
 
 "Constants"
 time_frame = '15m'
 
-candles = load_data(time_frame=time_frame)
+# Load old data and add possible new data to it:
+filename, candles = load_data(time_frame=time_frame)
+
 candles['DateTime'] = pd.to_datetime(candles['close timestamp'], unit='s')
 candles = candles.set_index(['DateTime'])
 candles = candles.drop(columns=['close timestamp'])
@@ -25,6 +27,9 @@ candles = candles.rename(columns={'open': 'Open',
                                   'low': 'Low',
                                   'high': 'High',
                                   'volume base': 'Volume'})
+
+# Save all the data (candles only for now):
+save_data(filename, candles)
 
 MA_26 = ind.MovingAverage(window_length=26, time_frame=time_frame)
 MA_26.batch_fit(candles)
@@ -40,10 +45,12 @@ t = candles.index  # time vector for plotting
 
 # TODO: Plot +2 and +3 ATR, BB, 26 and 13 EMA, Stochastic RSI
 
-fig, (ax1, ax2) = plt.subplots(2, 1, sharex='True')
+fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
 ax1.plot(t[MA_26.window_length:], MA_26.history)
 ax2.plot(t, RSI.history)
 # TODO: Merge this last plot in the same figure
 mpf.plot(candles, mav=20, type='candle', volume=True)
+
+
 
 
