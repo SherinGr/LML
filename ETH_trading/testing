@@ -18,23 +18,24 @@ time_frame = '15m'
 # Load old data and add possible new data to it:
 filename, candles = load_data(time_frame=time_frame)
 
-candles['DateTime'] = pd.to_datetime(candles['close timestamp'], unit='s')
-candles = candles.set_index(['DateTime'])
-candles = candles.drop(columns=['close timestamp'])
-
-candles = candles.rename(columns={'open': 'Open',
-                                  'close': 'Close',
-                                  'low': 'Low',
-                                  'high': 'High',
-                                  'volume base': 'Volume'})
+# We have to rename the candles for the plotting to work:
+plot_candles = candles.rename(columns={'open': 'Open',
+                                       'close': 'Close',
+                                       'low': 'Low',
+                                       'high': 'High',
+                                       'volume base': 'Volume'})
 
 # Save all the data (candles only for now):
 save_data(filename, candles)
 
-MA_26 = ind.MovingAverage(window_length=26, time_frame=time_frame)
-MA_26.batch_fit(candles)
-MA_13 = ind.MovingAverage(window_length=13, time_frame=time_frame)
-MA_13.batch_fit(candles)
+# MA_26 = ind.MovingAverage(window_length=26, time_frame=time_frame)
+# MA_26.batch_fit(candles)
+# MA_13 = ind.MovingAverage(window_length=13, time_frame=time_frame)
+# MA_13.batch_fit(candles)
+EMA_26 = ind.ExponentialMovingAverage(window_length=26, time_frame=time_frame)
+EMA_26.batch_fit(candles)
+EMA_13 = ind.ExponentialMovingAverage(window_length=13, time_frame=time_frame)
+EMA_13.batch_fit(candles)
 
 RSI = ind.RSI()
 RSI.batch_fit(candles)
@@ -46,10 +47,11 @@ t = candles.index  # time vector for plotting
 # TODO: Plot +2 and +3 ATR, BB, 26 and 13 EMA, Stochastic RSI
 
 fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
-ax1.plot(t[MA_26.window_length:], MA_26.history)
+ax1.plot(t, EMA_13.history)
+ax1.plot(t, EMA_26.history)
 ax2.plot(t, RSI.history)
 # TODO: Merge this last plot in the same figure
-mpf.plot(candles, mav=20, type='candle', volume=True)
+mpf.plot(plot_candles, mav=20, type='candle', volume=True)
 
 
 

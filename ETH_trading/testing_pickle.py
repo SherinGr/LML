@@ -18,3 +18,8 @@ load_file = open('test.pkl', 'rb')  # read binary
 data = pickle.load(load_file)
 
 load_file.close()
+
+if True:
+    print("True")
+else:
+    print("False")

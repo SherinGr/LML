@@ -3,42 +3,35 @@
 # In case you are interested in a more elaborate library check out tulipy
 
 import numpy as np
+import pandas as pd
 import warnings
 from scipy.linalg import toeplitz
 from collections import deque
 
 
 class MovingAverage:
-    """ Constructs a moving average with a certain window length and lag"""
-    def __init__(self, window_length, time_frame, aspect='C'):
-        """
-        Arguments:
-        window_length: amount of candles to use in calculation
-        time_frame: string denoting the timeframe (e.g. "4h")
-        aspect: string which can be either of these four: OHLC (default C)
-        """
+    """ Constructs a moving average with a certain window length
+        Note: Function assumes the close is the 4th value of a candle input following OHLC convention!
+    """
+    def __init__(self, window_length, time_frame):
         self.window_length = window_length
         self.time_frame = time_frame
-        self.aspect = aspect.upper()
-
-        # To know which element to get from the candle based on the aspect input:
-        self.aspect_dict = {'O': 0, 'H': 1, 'L': 2, 'C': 3}
-
-        self.memory = deque([], maxlen=self.window_length)  # candle aspects inside the window
+        # Initialize candles in memory and history of the MA:
+        self.memory = deque([np.nan]*window_length, maxlen=self.window_length)  # candle aspects inside the window
         self.history = []                                   # history of all MA values calculated
 
     def update(self, new_candle):
         """ Adds a new value to the moving average line
 
-        INPUTS: new_candle must be a list or np.array with OHLC values
+        INPUTS: new_candle must have OHLC values, in that order
 
         TODO: For a later version, only update if the time_frame matches
-        TODO: For a later version, change input to pandas.df to robustly verify which aspect you extract
         """
+
         new_candle = np.array(new_candle)
 
         # Add the new candle aspect to the memory:
-        self.memory.append(new_candle[self.aspect_dict[self.aspect]])
+        self.memory.append(new_candle[3])
         # Calculate the MA from the new deque:
         new_value = sum(list(self.memory))/self.window_length
         # Add the new value to the MA history:
@@ -48,38 +41,38 @@ class MovingAverage:
 
     def batch_fit(self, candle_batch):
         """ Fit the moving average of a batch of candles"""
-        candle_batch = np.array(candle_batch)  # in case we get a dataFrame input
-
         if self.history:
             self.history = []
             warnings.warn('Old MA data has been removed! Make sure that this was your intention', UserWarning)
 
-        # Extract the price aspect of all candles (Close by default):
-        prices = candle_batch[:, self.aspect_dict[self.aspect]]
-        # Make toeplitz matrix for fast computation:
-        r = prices[:self.window_length]
-        c = prices[self.window_length:]
-        price_matrix = toeplitz(c, r)
-        self.history = np.ndarray.sum(price_matrix, axis=1)/self.window_length
+        try:
+            # TODO: I don't like that the column 'Close' is hard-coded here
+            self.history = candle_batch['close'].rolling(self.window_length).mean()
+        except IndexError:
+            raise TypeError('Make sure provide a pd.DataFrame as input to the MovingAverage')
 
 
-class ExponentialMovingAverage(MovingAverage):
-    def __init__(self, window_length, time_frame, aspect='C'):
-        super().__init__(window_length, time_frame, aspect)
+class ExponentialMovingAverage:
+    def __init__(self, window_length, time_frame):
+        self.window_length = window_length
+        self.time_frame = time_frame
+        # Initialize candles in memory and history of the MA:
+        self.memory = deque([np.nan] * window_length, maxlen=self.window_length)  # candle aspects inside the window
+        self.history = []  # history of all MA values calculated
 
         self.coefficient = 2/(window_length+1)
-        self.ema_history = []
 
     def update(self, new_candle):
-        # First calculate the standard MA:
-        new_ma = MovingAverage.update(self, new_candle)
-        # New EMA value:
-        new_ema = new_ma*self.coefficient + self.ema_history[0]*(1-self.coefficient)
-        self.ema_history = self.ema_history + [new_ema]
+        new_ema = new_candle['close']*self.coefficient + self.history[-1]*(1-self.coefficient)
+        self.history = self.history + [new_ema]
 
     def batch_fit(self, candle_batch):
-        # TODO: write this
-        pass
+        if self.history:
+            self.history = []
+            warnings.warn('Old EMA data has been removed! Make sure that this was your intention', UserWarning)
+
+        # TODO: I don't like that the column 'Close' is hard-coded here
+        self.history = candle_batch['close'].ewm(span=self.window_length).mean()
 
 
 class BollingerBands:
