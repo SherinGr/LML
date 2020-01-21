@@ -10,48 +10,67 @@ import plotly.graph_objects as go
 import plotly.io as pio
 pio.renderers.default = "browser"
 
+from plotly.subplots import make_subplots
+
 from data_processing import *
 
-"Constants"
+""" Constants """
 time_frame = '15m'
+exchange = 'Binance'  # later can be input to load_data as well
+pair = 'ETHUSDT'
 
+""" Loading data """
 # Load old data and add possible new data to it:
-filename, candles = load_data(time_frame=time_frame)
-
-# We have to rename the candles for the plotting to work:
-plot_candles = candles.rename(columns={'open': 'Open',
-                                       'close': 'Close',
-                                       'low': 'Low',
-                                       'high': 'High',
-                                       'volume base': 'Volume'})
+filename, candles = load_data(exchange, pair, time_frame)
 
 # Save all the data (candles only for now):
 save_data(filename, candles)
 
-# MA_26 = ind.MovingAverage(window_length=26, time_frame=time_frame)
-# MA_26.batch_fit(candles)
-# MA_13 = ind.MovingAverage(window_length=13, time_frame=time_frame)
-# MA_13.batch_fit(candles)
+""" Processing, draw indicators """
+# EMA's
 EMA_26 = ind.ExponentialMovingAverage(window_length=26, time_frame=time_frame)
 EMA_26.batch_fit(candles)
 EMA_13 = ind.ExponentialMovingAverage(window_length=13, time_frame=time_frame)
 EMA_13.batch_fit(candles)
 
+# ATR's:
+
+
+# Stochastic RSI:
+
+# Bollinger band:
+
+
 RSI = ind.RSI()
 RSI.batch_fit(candles)
 
-t = candles.index  # time vector for plotting
-
-# Let us plot some candles to see what we are dealing with:
-
+""" Making plots using Plotly """
 # TODO: Plot +2 and +3 ATR, BB, 26 and 13 EMA, Stochastic RSI
 
-fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True)
-ax1.plot(t, EMA_13.history)
-ax1.plot(t, EMA_26.history)
-ax2.plot(t, RSI.history)
-# TODO: Merge this last plot in the same figure
-mpf.plot(plot_candles, mav=20, type='candle', volume=True)
+t = candles.index  # time vector for plotting
+
+fig = make_subplots(rows=3, cols=1, shared_xaxes=True)
+fig.add_trace(go.Candlestick(x=candles.index,
+                             open=candles['open'],
+                             high=candles['high'],
+                             low=candles['low'],
+                             close=candles['close'],
+                             showlegend=False),
+              row=1, col=1)
+
+fig.add_trace(go.Scatter(x=t, y=EMA_13.history,
+                         line=dict(color='purple'), name='EMA13'),
+              row=1, col=1)
+fig.add_trace(go.Scatter(x=t, y=EMA_26.history,
+                         line=dict(color='orange'), name='EMA26'),
+              row=1, col=1)
+
+#fig.add_trace(go.Line(), row=2, col=1)  # S SRI
+#fig.add_trace(go.Scatter(mode='lines'), row=2, col=1)  # Extra indicator
+
+fig.update_layout(title_text='{} chart of {} on {}'.format(time_frame, pair, exchange))
+
+fig.show()
 
 
 

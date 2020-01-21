@@ -1,4 +1,3 @@
-# We will webscrape the data of ETH prices from cryptowat.ch
 import cryptowatch as cw
 import pandas as pd
 import re
@@ -66,7 +65,7 @@ def last_modified_file(files_list):
     return nf, nf_mdate
 
 
-def fetch_local_data(time_frame):
+def fetch_local_data(exchange, pair, time_frame):
     print('Fetching local data...')
     files = list_local_data_files(time_frame)
 
@@ -78,11 +77,11 @@ def fetch_local_data(time_frame):
     return newest_file, mdate
 
 
-def fetch_web_data(time_frame):
-    """ Get new data from BINANCE:ETHUSDT and save it in a pd.DataFrame"""
-    # TODO: Allow for other markets and exchanges
+def fetch_web_data(exchange, pair, time_frame):
+    """ Get new data from exchange:pair and save it in a pd.DataFrame"""
     print('Fetching new data from the web...')
-    data = cw.markets.get("BINANCE:ETHUSDT", ohlc=True, periods=[time_frame])
+    source = exchange.upper() + ':' + pair.upper()
+    data = cw.markets.get(source, ohlc=True, periods=[time_frame])
     # The data is a list of lists, each element of the list is a list containing the following values:
     cols = data._legend
 
@@ -118,23 +117,97 @@ def newest_dataset(candle_set1, candle_set2):
 
 
 def concatenate_batches(candle_set1, candle_set2):
-
+    # TODO: Big issue: Mutliple candles of the same timespan stay because they are not duplicates. Namely sometimes
+    #  we fetch data halfway into a current candle and later again, when that candle has changed! We should only keep
+    #  candle data from a dataset where there is another candle coming after it when merging!
     overlap = check_for_overlap(candle_set1, candle_set2)
     if not overlap:
-        completed_data = newest_dataset(candle_set1, candle_set2)
-        print('No overlap between old and new data, will only use new data and store it in a new file.')
+        # Return newest dataset if no overlap
+        clean_data = newest_dataset(candle_set1, candle_set2)
     else:
-        joint_data = pd.concat([candle_set1, candle_set2])
-        completed_data = joint_data.drop_duplicates()
-        # TODO: DROP DUPLICATES DOES NOT WORK!?
-        completed_data.sort_index()
+        joint_data = pd.concat([candle_set1, candle_set2], sort=False)  # important not to sort as to keep the right
+        # candles when deleting duplicates
 
-    return completed_data, overlap
+        index = joint_data.index
+        is_duplicate = index.duplicated(keep='last')
+        clean_data = joint_data[~is_duplicate]
+        #completed_data = joint_data.drop_duplicates(subset='index', keep='last')
+        clean_data.sort_index()
+
+    return clean_data, overlap
 
 
-def merge_pickle_files():
-    # TODO: write function to merge data in two pickle files if no gap present.
-    pass
+def merge_files(filename1, filename2):
+    file1 = open(filename1, 'rb')
+    file2 = open(filename2, 'rb')
+    dataset1 = pickle.load(file1)
+    dataset2 = pickle.load(file2)
+
+    # Check that timeframes match:
+    timeframes = ['1m', '15m', '5m', '30m', '1h', '2h', '4h', '6h', '12h', '1d', '3d', '1w', '1M']
+
+    for tf in timeframes:  # this is not very robust, we just stop now after the first match.
+        if tf in filename1:
+            time_frame = tf.strip()
+            break
+
+    for tf in timeframes:
+        if tf in filename2:
+            time_frame2 = tf.strip()
+            break
+
+    if not time_frame == time_frame2:
+        # In a later verstion also check to match exchange and pair. For now only Binance ETHUSDT data is assumed
+        # if not is_data_compatible():
+        raise Exception('Data sets are not compatible (different pair, exchange or timeframe.')
+
+    merged_data, success = concatenate_batches(dataset1, dataset2)
+    if not success:
+        raise Exception('It is not possible to merge the provided files without a gap.')
+    else:
+        # Make new file and store the data in it:
+        new_filename = create_new_data_file(time_frame)
+        save_data(new_filename, merged_data)
+
+    return new_filename
+
+
+def merge_all_files(time_frame):
+    files_list = list_local_data_files(time_frame)
+
+    # Exit function if there's only one file:
+    if len(files_list) == 1:
+        print('Only one {} file present, nothing to merge.'.format(time_frame))
+        return
+
+    # Otherwise get the data from all the files:
+    all_data = []
+    for f in files_list:
+        file = open(f, 'rb')
+        data = pickle.load(file)
+        print(str(type(data)) + f)
+        if not data.empty:
+            all_data = all_data + [data]
+
+    # And merge all of it into a new file:
+    while True:
+        set1, set2 = all_data[:2]
+        rest = all_data[2:]
+
+        merged_set, success = concatenate_batches(set1, set2)
+        if not success:
+            raise Exception('It is not possible to merge the data without a gap.')
+        elif rest:
+            all_data = [merged_set] + rest
+        elif not rest:
+            # If the last two datasets have been merged, save data and stop:
+            num_candles = len(merged_set)
+            print("{} {} candles in the merged dataset.".format(num_candles, time_frame))
+            new_filename = create_new_data_file(time_frame)
+            save_data(new_filename, merged_set)
+            break
+
+    return new_filename
 
 
 def format_data(candles):
@@ -151,7 +224,7 @@ def format_data(candles):
     return candles
 
 
-def load_data(time_frame='4h'):
+def load_data(exchange, pair, time_frame='1h'):
     """ This function webscrapes data of ETH prices on BINANCE. As it is now it returns 4h OHCL and volume data. This
     can be changed according to your needs.
 
@@ -159,11 +232,12 @@ def load_data(time_frame='4h'):
     """
 
     # Get data from the web:
-    new_candles = fetch_web_data(time_frame)
+    new_candles = fetch_web_data(exchange, pair, time_frame)
     new_candles = format_data(new_candles)
 
     # Check for local data:
-    data_file, mdate = fetch_local_data(time_frame)
+    # TODO: Check that local data comes from the same exchange, pair and time_frame
+    data_file, mdate = fetch_local_data(exchange, pair, time_frame)
 
     if not data_file == '':
         ans = input('Existing {} data found, add new candles to the old data? [y/n]\n'.format(time_frame.strip()))
@@ -183,6 +257,7 @@ def load_data(time_frame='4h'):
                 candles, success = concatenate_batches(old_candles, new_candles)
                 if not success:
                     # Could not concatenate, save newest set of candles in a new file.
+                    print('No overlap between old and new data, will only use new data and store it in a new file.')
                     data_file = create_new_data_file(time_frame)
         else:
             # Create new file with higher file nr.
