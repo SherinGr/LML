@@ -117,9 +117,6 @@ def newest_dataset(candle_set1, candle_set2):
 
 
 def concatenate_batches(candle_set1, candle_set2):
-    # TODO: Big issue: Mutliple candles of the same timespan stay because they are not duplicates. Namely sometimes
-    #  we fetch data halfway into a current candle and later again, when that candle has changed! We should only keep
-    #  candle data from a dataset where there is another candle coming after it when merging!
     overlap = check_for_overlap(candle_set1, candle_set2)
     if not overlap:
         # Return newest dataset if no overlap
@@ -131,7 +128,6 @@ def concatenate_batches(candle_set1, candle_set2):
         index = joint_data.index
         is_duplicate = index.duplicated(keep='last')
         clean_data = joint_data[~is_duplicate]
-        #completed_data = joint_data.drop_duplicates(subset='index', keep='last')
         clean_data.sort_index()
 
     return clean_data, overlap
@@ -272,7 +268,7 @@ def load_data(exchange, pair, time_frame='1h'):
 
     num_candles = len(candles)
 
-    print("{} {} candles in the current dataset.".format(num_candles, time_frame))
+    print("{} {} candles in the current dataset.\n".format(num_candles, time_frame))
 
     return data_file, candles
 
