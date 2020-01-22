@@ -5,6 +5,7 @@
 import numpy as np
 import pandas as pd
 import warnings
+import plotly.graph_objects as go
 from scipy.linalg import toeplitz
 from collections import deque
 
@@ -21,6 +22,7 @@ class Indicator:
 class MovingAverage(Indicator):
     def __init__(self, window_length, time_frame):
         super().__init__(window_length, time_frame)
+        self.name = 'MA' + str(window_length) + '_' + time_frame
 
     def update(self, new_data):
         # TODO: For a later version, only update if the time_frame matches
@@ -66,11 +68,17 @@ class MovingAverage(Indicator):
             self.history = df.rolling(self.window_length).mean()
             self.memory.extend(df.tail(self.window_length))
 
+    def plot(self, figure, color='purple'):
+        ma = self.history
+        t = self.history.index
+        figure.add_trace(go.Scatter(x=t, y=ma, line=dict(color=color), name=self.name),
+                         row=1, col=1)
+
 
 class ExponentialMovingAverage(Indicator):
     def __init__(self, window_length, time_frame):
         super().__init__(window_length, time_frame)
-
+        self.name = 'EMA' + str(window_length) + '_' + time_frame
         self.coefficient = 2/(window_length+1)
 
     def new_ema(self, new_data):
@@ -124,6 +132,12 @@ class ExponentialMovingAverage(Indicator):
             self.history = df.ewm(span=self.window_length).mean()
             self.memory.extend(df.tail(self.window_length))
 
+    def plot(self, figure, color='purple'):
+        ema = self.history
+        t = self.history.index
+        figure.add_trace(go.Scatter(x=t, y=ema, line=dict(color=color), name=self.name),
+                         row=1, col=1)
+
 
 class ATR(Indicator):
     def __init__(self, window_length, time_frame):
@@ -160,9 +174,11 @@ class ATR(Indicator):
             self.history = pd.DataFrame()
             self.memory = deque([np.nan] * window_length, maxlen=self.window_length)
 
+
+
         batch_size = len(candle_batch)
         print('Sorry, encountered a slow for loop...')
-
+    # TODO: Remove this for loop, it's freakin slow!
         for i in range(batch_size):
             candle = candle_batch.iloc[i]
             self.update(candle)
@@ -176,7 +192,7 @@ class ATRChannels:
         self.atr = ATR(window_length, time_frame)
         self.ema = ExponentialMovingAverage(window_length, time_frame)
 
-        self.atr_bands = pd.DataFrame()
+        self.channels = pd.DataFrame()
 
     def update(self, candle):
         new_atr = self.atr.update(candle)
@@ -186,8 +202,7 @@ class ATRChannels:
 
         df = pd.DataFrame([new_bands])
         df.index = pd.DatetimeIndex([candle.name])
-
-        self.atr_bands.append(df)
+        self.channels.append(df)
 
         return new_bands
 
@@ -197,20 +212,38 @@ class ATRChannels:
         ema = np.array(ema)
         atr = np.array(atr)
         ranges = np.array([[3], [2], [1], [0], [-1], [-2], [-3]])
-        atr_bands = ranges * atr.T + np.ones(ranges.shape) * ema
-        # TODO: shapes go wrong with the batch fit.
-        return atr_bands
+        channels = ranges * atr.T + np.ones(ranges.shape) * ema
+        return channels
 
     def batch_fit(self, candle_batch):
         # Calculate the ATR and the EMA over all candles
         self.atr.batch_fit(candle_batch)
         self.ema.batch_fit(candle_batch)
         # Construct the ATR bands around the EMA:
-        atr_bands = self.atr_channels(self.ema.history, self.atr.history)
+        channels = self.atr_channels(self.ema.history, self.atr.history)
         # Save the data in a DataFrame
-        df = pd.DataFrame(atr_bands.T)
+        df = pd.DataFrame(channels.T)
         df.index = pd.DatetimeIndex(candle_batch.index)
-        self.atr_bands = df
+        df.columns = ['+3', '+2', '+1', 'EMA', '-1', '-2', '-3']
+        self.channels = df
+
+    def plot(self, figure):
+        """ Plot +/-2 and +/-3 ATR around corresponding EMA"""
+        channels = self.channels
+        ema = self.ema
+        t = channels.index
+        # Plot the EMA:
+        figure.add_trace(go.Scatter(x=t, y=ema.history, line=dict(color='orange'), name=ema.name),
+                         row=1, col=1)
+
+        # Drop columns that we do not want to plot up next:
+        channels = channels.drop(columns=['+1', 'EMA', '-1'])
+        # Plot +2,-2 thin, and +3,-3 thicker
+        cols = channels.columns
+        for c in cols:
+            figure.add_trace(go.Scatter(x=t, y=channels[c], line=dict(color='black', width=(abs(int(c)) - 1) / 2),
+                                        showlegend=False),
+                             row=1, col=1)
 
 
 class BollingerBands:
