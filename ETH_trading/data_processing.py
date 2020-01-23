@@ -282,6 +282,9 @@ def save_data(filename, candle_data):  # *objects):
     data_file.close()
 
 
+# Load some candles for testing:
+if __name__ == "__main__":
+    _, candles = load_data('Binance', 'ETHUSDT', '15m')
 
 
 

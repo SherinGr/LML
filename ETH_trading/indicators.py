@@ -11,36 +11,59 @@ from collections import deque
 
 
 class Indicator:
-    def __init__(self, window_length, time_frame):
+    def __init__(self, window_length, time_frame, tp_style):
         self.window_length = window_length
         self.time_frame = time_frame
         # Initialize candles in memory and history of the MA:
         self.memory = deque([np.nan] * window_length, maxlen=self.window_length)  # candle aspects inside the window
-        self.history = pd.DataFrame()                                             # history of all values calculated
+        self.history = pd.DataFrame()     # history of all values calculated
+        # Set the typical price used to base the indicator on: (see fn below for options)
+        self.tp_style = tp_style
+
+    @staticmethod
+    def get_tp(candles, tp_style):
+        """ Get the typical price of a candle batch for given tp_style
+
+            :returns int if one candle (pd.Series) as input, otherwise returns pd.DataFrame
+        """
+        if tp_style in ['open', 'high', 'low', 'close']:
+            return candles[tp_style]
+        elif tp_style == 'hl2':
+            return (candles['high'] + candles['low'])/2
+        elif tp_style == 'hlc3':
+            return (candles['high'] + candles['low'] + candles['close'])/3
+        elif tp_style == 'ohlc4':
+            if len(candles.shape)==1:
+                # If only one candle it is a pd.Series so we have to do this:
+                return candles.drop('volume base').mean()
+            else:
+                return candles.drop(columns=['volume base']).mean(axis=1)
+        else:
+            raise NameError(tp_style + ' is not recognized as a typical price format.')
 
 
 class MovingAverage(Indicator):
-    def __init__(self, window_length, time_frame):
-        super().__init__(window_length, time_frame)
+    def __init__(self, window_length, time_frame, tp_style='close'):
+        super().__init__(window_length, time_frame, tp_style)
         self.name = 'MA' + str(window_length) + '_' + time_frame
 
     def update(self, new_data):
         # TODO: For a later version, only update if the time_frame matches
         try:
-            # Add the new candle close to the memory:
-            self.memory.append(new_data['close'])
-            # Calculate the MA from the new deque:
-            new_value = np.nansum(list(self.memory)) / self.window_length
+            # Calculate new MA for a candle input:
+            new_tp = super().get_tp(new_data, self.tp_style)
+            new_ma = np.nansum(list(self.memory)) / self.window_length
 
-            df = pd.DataFrame(new_value)
-            df.index = pd.DataFrame([new_data.name])
+            self.memory.append(new_tp)
+            df = pd.DataFrame(new_ma)
+            df.index = pd.DatetimeIndex([new_data.name])
         except TypeError:
             # If input is just a single value, do standard MA
             self.memory.append(new_data)
             # Calculate the MA from the new deque:
-            new_value = np.nansum(list(self.memory))/self.window_length
+            new_ma = np.nansum(list(self.memory))/self.window_length
 
-            df = pd.DataFrame([new_value])
+            df = pd.DataFrame([new_ma])
             # Make sure the indexing of the df is correct:
             if self.history.empty:
                 df.index = pd.Int64Index([0])
@@ -49,7 +72,7 @@ class MovingAverage(Indicator):
 
         self.history = self.history.append(df)
 
-        return new_value
+        return new_ma
 
     def batch_fit(self, data_batch):
         """ Fit the moving average of a batch of candles"""
@@ -60,8 +83,9 @@ class MovingAverage(Indicator):
 
         try:
             # Assume candle input
-            self.history = data_batch['close'].rolling(self.window_length).mean()
-            self.memory.extend(data_batch['close'].tail(self.window_length))
+            tp_batch = super().get_tp(data_batch, self.tp_style)
+            self.history = tp_batch.rolling(self.window_length).mean()
+            self.memory.extend(tp_batch.tail(self.window_length))
         except IndexError:
             # Otherwise assume list or array of values
             df = pd.DataFrame(data_batch)
@@ -76,15 +100,17 @@ class MovingAverage(Indicator):
 
 
 class ExponentialMovingAverage(Indicator):
-    def __init__(self, window_length, time_frame):
-        super().__init__(window_length, time_frame)
+    def __init__(self, window_length, time_frame, tp_style='close'):
+        super().__init__(window_length, time_frame, tp_style)
         self.name = 'EMA' + str(window_length) + '_' + time_frame
+
         self.coefficient = 2/(window_length+1)
 
     def new_ema(self, new_data):
         try:
-            # If we get a candle, add the new candle close to the memory:
-            self.memory.append(new_data['close'])
+            # If we get a candle, add the new candle typical price to the memory:
+            new_tp = super().get_tp(new_data, self.tp_style)
+            self.memory.append(new_tp)
         except (TypeError, IndexError):
             # If we get a scalar value, add it to the memory as such:
             self.memory.append(new_data)
@@ -125,8 +151,9 @@ class ExponentialMovingAverage(Indicator):
             warnings.warn('Old EMA data has been removed! Make sure that this was your intention.', UserWarning)
 
         try:
-            self.history = data_batch['close'].ewm(span=self.window_length).mean()
-            self.memory.extend(data_batch['close'].tail(self.window_length))
+            tp_batch = super().get_tp(data_batch, self.tp_style)
+            self.history = tp_batch.ewm(span=self.window_length).mean()
+            self.memory.extend(tp_batch.tail(self.window_length))
         except IndexError:
             df = pd.DataFrame(data_batch)
             self.history = df.ewm(span=self.window_length).mean()
@@ -141,7 +168,7 @@ class ExponentialMovingAverage(Indicator):
 
 class ATR(Indicator):
     def __init__(self, window_length, time_frame):
-        super().__init__(window_length, time_frame)
+        super().__init__(window_length, time_frame, tp_style=None)
         self.name = 'ATR' + str(window_length) + '_' + time_frame
 
         self.ema = ExponentialMovingAverage(window_length, time_frame)
@@ -254,13 +281,29 @@ class ATRChannels:
                              row=1, col=1)
 
 
-class BollingerBands:
-    def __init__(self):
+class BollingerBands(Indicator):
+    def __init__(self, window_length, time_frame, num_std=2, tp_style = 'hlc3'):
+        super().__init__(window_length, time_frame)
+        self.num_std = num_std
+        self.tp_style = tp_style
+
+        self.ma = MovingAverage(window_length, time_frame, self.tp_style)
+
+    def calculate_std(self):
         pass
 
-    def update_bands(self,):
+    def update(self, candle):
+        pass
+        # self.ma.update(candle)
+        # tp_candle = self.candle_tp(candle)
+        # tp_array = self.ma.history.iloc[-window_length:]
+        # np.std(tp_array-tp_candle)
+
+    def batch_fit(self):
         pass
 
+    def plot(self):
+        pass
 
 class MACD:
     pass

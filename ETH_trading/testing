@@ -20,11 +20,14 @@ filename, candles = load_data(exchange, pair, time_frame)
 save_data(filename, candles)
 
 """ Processing, draw indicators """
+
 EMA13 = ind.ExponentialMovingAverage(window_length=13, time_frame=time_frame)
+print('Fitting EMA...')
 EMA13.batch_fit(candles)
 
 # ATR Channels:
 ATRChannels26 = ind.ATRChannels(window_length=26, time_frame=time_frame)
+print('Fitting ATR Channels...')
 ATRChannels26.batch_fit(candles)
 
 # Stochastic RSI:
@@ -37,7 +40,7 @@ ATRChannels26.batch_fit(candles)
 
 """ Making plots using Plotly """
 # TODO: Plot BB, Stochastic RSI
-
+print('Plotting...')
 fig = make_subplots(rows=3, cols=1, shared_xaxes=True)
 fig.add_trace(go.Candlestick(x=candles.index,
                              open=candles['open'],
