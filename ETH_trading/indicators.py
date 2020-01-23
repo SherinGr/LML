@@ -7,6 +7,7 @@ import pandas as pd
 import warnings
 import plotly.graph_objects as go
 from scipy.linalg import toeplitz
+from scipy.linalg import hankel
 from collections import deque
 
 
@@ -33,13 +34,13 @@ class Indicator:
         elif tp_style == 'hlc3':
             return (candles['high'] + candles['low'] + candles['close'])/3
         elif tp_style == 'ohlc4':
-            if len(candles.shape)==1:
+            if len(candles.shape) == 1:
                 # If only one candle it is a pd.Series so we have to do this:
                 return candles.drop('volume base').mean()
             else:
                 return candles.drop(columns=['volume base']).mean(axis=1)
         else:
-            raise NameError(tp_style + ' is not recognized as a typical price format.')
+            raise NameError('"' + tp_style + '" is not recognized as a typical price format.')
 
 
 class MovingAverage(Indicator):
@@ -107,13 +108,16 @@ class ExponentialMovingAverage(Indicator):
         self.coefficient = 2/(window_length+1)
 
     def new_ema(self, new_data):
-        try:
+        """ This function also makes the EMA class usable on scalar series"""
+        if type(new_data) == np.float64 or type(new_data) == float:
+            # If we get a scalar value, add it to the memory as such:
+            self.memory.append(new_data)
+        elif type(new_data) == pd.core.series.Series:
             # If we get a candle, add the new candle typical price to the memory:
             new_tp = super().get_tp(new_data, self.tp_style)
             self.memory.append(new_tp)
-        except (TypeError, IndexError):
-            # If we get a scalar value, add it to the memory as such:
-            self.memory.append(new_data)
+        else:
+            raise TypeError('Wrong data type {} supplied to ema update'.format(type(new_data)))
 
         # Get the previous EMA value:
         if self.history.empty:
@@ -154,14 +158,14 @@ class ExponentialMovingAverage(Indicator):
             tp_batch = super().get_tp(data_batch, self.tp_style)
             self.history = tp_batch.ewm(span=self.window_length).mean()
             self.memory.extend(tp_batch.tail(self.window_length))
-        except IndexError:
+        except NameError:
             df = pd.DataFrame(data_batch)
             self.history = df.ewm(span=self.window_length).mean()
             self.memory.extend(df.tail(self.window_length))
 
     def plot(self, figure, color='purple'):
         ema = self.history
-        t = self.history.index
+        t = ema.index
         figure.add_trace(go.Scatter(x=t, y=ema, line=dict(color=color), name=self.name),
                          row=1, col=1)
 
@@ -171,7 +175,7 @@ class ATR(Indicator):
         super().__init__(window_length, time_frame, tp_style=None)
         self.name = 'ATR' + str(window_length) + '_' + time_frame
 
-        self.ema = ExponentialMovingAverage(window_length, time_frame)
+        self.ema = ExponentialMovingAverage(window_length, time_frame, tp_style='other')
 
     def true_range(self, candle):
         prev_candle = self.memory[-1]
@@ -203,6 +207,7 @@ class ATR(Indicator):
             self.history = pd.DataFrame()
             self.ema.history = pd.DataFrame()
             self.memory = deque([np.nan] * window_length, maxlen=self.window_length)
+            warnings.warn('Old ART data has been removed. Make sure this was your intention', UserWarning)
 
         # First case of TR: Ht - Lt
         v1 = np.array(candle_batch['high']) - np.array(candle_batch['low'])
@@ -230,13 +235,15 @@ class ATRChannels:
         self.channels = pd.DataFrame()
 
     def update(self, candle):
+        # Update the data:
         new_atr = self.atr.update(candle)
         new_ema = self.ema.update(candle)
-
         new_bands = self.atr_channels(new_ema, new_atr)
-
-        df = pd.DataFrame([new_bands])
-        df.index = pd.DatetimeIndex([candle.name])
+        # Store the new data:
+        cols = ['+3', '+2', '+1', 'EMA', '-1', '-2', '-3']
+        temp = dict(zip(cols, new_bands))
+        index = pd.DatetimeIndex([candle.name])
+        df = pd.DataFrame.from_records(temp, index=index)
         self.channels.append(df)
 
         return new_bands
@@ -281,78 +288,136 @@ class ATRChannels:
                              row=1, col=1)
 
 
-class BollingerBands(Indicator):
-    def __init__(self, window_length, time_frame, num_std=2, tp_style = 'hlc3'):
-        super().__init__(window_length, time_frame)
+class BollingerBand(Indicator):
+    def __init__(self, window_length, time_frame, num_std=2, tp_style='close'):
+        super().__init__(window_length, time_frame, tp_style)
         self.num_std = num_std
         self.tp_style = tp_style
 
         self.ma = MovingAverage(window_length, time_frame, self.tp_style)
 
-    def calculate_std(self):
-        pass
+    def get_std(self):
+        # No, don't get an STD, just find the standard deviation of the last tp's!
+        current_ma = self.ma.history.iloc[-1]
+        tp_array = np.array(self.ma.memory)
+        std = np.nanstd(tp_array - current_ma)
+
+        return std
 
     def update(self, candle):
-        pass
-        # self.ma.update(candle)
-        # tp_candle = self.candle_tp(candle)
-        # tp_array = self.ma.history.iloc[-window_length:]
-        # np.std(tp_array-tp_candle)
+        # Update the MA (and its history as such):
+        ma = self.ma.update(candle)
+        std = self.get_std()  # this should not be called before updating the MA!
+        upper_bb = ma + 2*std
+        lower_bb = ma - 2*std
+        # Store the data:
+        bands = [upper_bb, ma, lower_bb]
+        cols = ['UB', 'MA', 'LB']
+        index = pd.DatetimeIndex([candle.name])
+        df = pd.DataFrame.from_records(dict(zip(cols, bands)), index=index)
+        self.history = self.history.append(df)
+        self.memory = self.ma.memory
 
-    def batch_fit(self):
-        pass
+    def batch_fit(self, candle_batch):
+        if not self.history.empty:
+            self.history = []
+            self.memory = deque([np.nan] * window_length, maxlen=self.window_length)
+            warnings.warn('Old BB data has been removed! Make sure that this was your intention.', UserWarning)
 
-    def plot(self):
-        pass
+        tp_batch = np.array(super().get_tp(candle_batch, self.tp_style))
+        tp_matrix = hankel(tp_batch, tp_batch[-self.window_length:])
+
+        self.ma.batch_fit(candle_batch)
+        ma = np.array(self.ma.history)
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore')  # numpy complains that std has NaN's but this is OK for us.
+            std = np.nanstd(tp_matrix.T - ma*np.ones((self.window_length, 1)), axis=0)
+
+        upper_bb = ma + 2*std
+        lower_bb = ma - 2*std
+
+        bands = [upper_bb, ma, lower_bb]
+        cols = ['UB', 'MA', 'LB']
+
+        temp = dict(zip(cols, bands))
+        df = pd.DataFrame.from_dict(temp)
+        df.index = pd.DatetimeIndex(candle_batch.index)
+        self.history = df
+        self.memory.extend(tp_batch[-self.window_length:])
+
+    def plot(self, figure):
+        """ Plot Bollinger Bands around corresponding MA"""
+        bands = self.history
+        bands = bands.drop(columns=['MA'])
+        t = bands.index
+
+        # Plot the upper band:
+        figure.add_trace(go.Scatter(x=t, y=bands['UB'], line=dict(color='black', width=0.5), showlegend=False,
+                                    fill=None),
+                         row=1, col=1)
+
+        # Plot lower band and fill area:
+        figure.add_trace(go.Scatter(x=t, y=bands['LB'], line=dict(color='black', width=0.5), showlegend=False,
+                                    fill='tonexty', fillcolor='rgba(255,255,255,0.5)'),
+                         row=1, col=1)
+
 
 class MACD:
     pass
 
 
-class RSI:
-    # TODO: Values do not match tradingview yet.
-    def __init__(self, window_length=14):
-        self.window_length = window_length
-        self.memory = deque([np.nan]*(window_length+1), maxlen=window_length+1)
-        self.history = []
+class RSI(Indicator):
+    def __init__(self, time_frame, window_length=14, tp_style='close'):
+        super().__init__(window_length, time_frame, tp_style)
 
-        self.average_gain = 0
-        self.average_loss = 0
+        self.name = 'RSI' + str(window_length) + '_' + time_frame
 
-    def update(self, new_candle):
-        new_close = new_candle['close']
-        print(new_candle)
-        self.memory.append(new_close)
+        self.avg_gain = ExponentialMovingAverage(window_length, time_frame, tp_style)
+        self.avg_loss = ExponentialMovingAverage(window_length, time_frame, tp_style)
+
+    def update(self, candle):
+        new_tp = super().get_tp(candle, self.tp_style)
         # Calculate all changes inside the window:
-        close_values = np.array(self.memory)
-        change = close_values[-2]-close_values[-1]
+        change = new_tp - self.memory[-1]
         # Calculate gains and losses (0 if change is not the right sign)
         gain = change*(change > 0)
         loss = change*(change < 0)
-        # Average gain and loss over window:
-        self.average_gain = (self.average_gain*(self.window_length-1)+gain)/self.window_length
-        self.average_loss = (self.average_loss*(self.window_length-1)+abs(loss))/self.window_length
+        # Update average gain and loss EMA's:
+        new_avg_gain = self.avg_gain.update(gain)
+        new_avg_loss = self.avg_loss.update(loss)
+        # TODO: check if this works?
+        # self.average_gain = (self.average_gain*(self.window_length-1)+gain)/self.window_length
+        # self.average_loss = (self.average_loss*(self.window_length-1)+abs(loss))/self.window_length
         # Calculate RSI:
         try:
-            relative_strength = self.average_gain/self.average_loss
+            relative_strength = new_avg_gain/new_avg_loss
             new_rsi = 100 - 100 / (1 + relative_strength)
         except ZeroDivisionError:
             new_rsi = 100
-
-        # TODO: An EMA needs to be added over this
-
-        self.history = self.history + [new_rsi]
+        # TODO: start debugging here!
+        df = pd.DataFrame([new_rsi])
+        df.index = pd.DatetimeIndex([candle.name])
+        self.history = self.history.append(df)
+        self.memory.append(new_tp)
 
     def batch_fit(self, candle_batch):
-        if self.history:
+        if self.history.empty:
             self.history = []
-            self.memory = deque([np.nan] * (window_length + 1), maxlen=self.window_length + 1)
+            self.memory = deque([np.nan] * (self.window_length + 1), maxlen=self.window_length)
             warnings.warn('Old RSI data has been removed! Make sure that this was your intention', UserWarning)
 
-        for candle in candle_batch.iterrows():
-            print(candle['close'])
+        batch_size = len(candle_batch)
+        # TODO: Remove slow for loop!
+        print('Sorry, encountered slow for loop...')
+        for i in range(batch_size):
+            candle = candle_batch.iloc[i]
             self.update(candle)
 
+    def plot(self, figure, color='royalblue'):
+        rsi = self.history
+        t = rsi.index
+        figure.add_trace(go.Scatter(x=t, y=rsi, line=dict(color=color, width=3), name=self.name),
+                         row=2, col=1)
 
 class StochasticRSI(RSI):
     pass

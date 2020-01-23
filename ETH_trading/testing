@@ -33,15 +33,21 @@ ATRChannels26.batch_fit(candles)
 # Stochastic RSI:
 
 # Bollinger band:
+BB20 = ind.BollingerBand(window_length=20, time_frame=time_frame, tp_style='hlc3')
+BB20.batch_fit(candles)
 
-
-#RSI = ind.RSI()
-#RSI.batch_fit(candles)
+# RSI:
+RSI = ind.RSI(window_length=14, time_frame=time_frame)
+RSI.batch_fit(candles)
 
 """ Making plots using Plotly """
 # TODO: Plot BB, Stochastic RSI
 print('Plotting...')
 fig = make_subplots(rows=3, cols=1, shared_xaxes=True)
+
+# Bollinger Bands on the background:
+BB20.plot(fig)
+# Then Candlesticks:
 fig.add_trace(go.Candlestick(x=candles.index,
                              open=candles['open'],
                              high=candles['high'],
@@ -49,11 +55,11 @@ fig.add_trace(go.Candlestick(x=candles.index,
                              close=candles['close'],
                              showlegend=False),
               row=1, col=1)
-
+# Then EMA's and ATR channels:
 EMA13.plot(fig)
 ATRChannels26.plot(fig)
+RSI.plot(fig)
 
-# fig.add_trace(go.Line(), row=2, col=1)  # S SRI
 # fig.add_trace(go.Scatter(mode='lines'), row=2, col=1)  # Extra indicator
 
 fig.update_layout(title_text='{} chart of {} on {}'.format(time_frame, pair, exchange))
