@@ -16,7 +16,7 @@ class Indicator:
         self.time_frame = time_frame
         # Initialize candles in memory and history of the MA:
         self.memory = deque([np.nan] * window_length, maxlen=self.window_length)  # candle aspects inside the window
-        self.history = pd.DataFrame()                                           # history of all values calculated
+        self.history = pd.DataFrame()                                             # history of all values calculated
 
 
 class MovingAverage(Indicator):
@@ -62,7 +62,7 @@ class MovingAverage(Indicator):
             # Assume candle input
             self.history = data_batch['close'].rolling(self.window_length).mean()
             self.memory.extend(data_batch['close'].tail(self.window_length))
-        except TypeError:
+        except IndexError:
             # Otherwise assume list or array of values
             df = pd.DataFrame(data_batch)
             self.history = df.rolling(self.window_length).mean()
@@ -127,7 +127,7 @@ class ExponentialMovingAverage(Indicator):
         try:
             self.history = data_batch['close'].ewm(span=self.window_length).mean()
             self.memory.extend(data_batch['close'].tail(self.window_length))
-        except TypeError:
+        except IndexError:
             df = pd.DataFrame(data_batch)
             self.history = df.ewm(span=self.window_length).mean()
             self.memory.extend(df.tail(self.window_length))
@@ -142,6 +142,8 @@ class ExponentialMovingAverage(Indicator):
 class ATR(Indicator):
     def __init__(self, window_length, time_frame):
         super().__init__(window_length, time_frame)
+        self.name = 'ATR' + str(window_length) + '_' + time_frame
+
         self.ema = ExponentialMovingAverage(window_length, time_frame)
 
     def true_range(self, candle):
@@ -172,16 +174,22 @@ class ATR(Indicator):
     def batch_fit(self, candle_batch):
         if not self.history.empty:
             self.history = pd.DataFrame()
+            self.ema.history = pd.DataFrame()
             self.memory = deque([np.nan] * window_length, maxlen=self.window_length)
 
+        # First case of TR: Ht - Lt
+        v1 = np.array(candle_batch['high']) - np.array(candle_batch['low'])
+        # Second case of TR: Ct - Ct-1
+        temp = np.append(np.nan, np.array(candle_batch.iloc[:-1]['close']))
+        v2 = abs(np.array(candle_batch['close']) - temp)
+        # Third case of TR: Lt - Ct-1
+        v3 = abs(np.array(candle_batch['low']) - temp)
 
+        v = np.array([v1, v2, v3])
+        tr_array = np.max(v, axis=0)
 
-        batch_size = len(candle_batch)
-        print('Sorry, encountered a slow for loop...')
-    # TODO: Remove this for loop, it's freakin slow!
-        for i in range(batch_size):
-            candle = candle_batch.iloc[i]
-            self.update(candle)
+        self.ema.batch_fit(tr_array)
+        self.history = self.ema.history
 
         # Add last #window_length candles to the memory
         self.memory.extend(candle_batch['close'].tail(self.window_length))
