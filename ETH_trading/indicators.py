@@ -58,7 +58,7 @@ class MovingAverage(Indicator):
             self.memory.append(new_tp)
             df = pd.DataFrame(new_ma)
             df.index = pd.DatetimeIndex([new_data.name])
-        except TypeError:
+        except IndexError:
             # If input is just a single value, do standard MA
             self.memory.append(new_data)
             # Calculate the MA from the new deque:
@@ -94,7 +94,7 @@ class MovingAverage(Indicator):
             self.memory.extend(df.tail(self.window_length))
 
     def plot(self, figure, color='purple'):
-        ma = self.history
+        ma = self.history.values
         t = self.history.index
         figure.add_trace(go.Scatter(x=t, y=ma, line=dict(color=color), name=self.name),
                          row=1, col=1)
@@ -109,21 +109,19 @@ class ExponentialMovingAverage(Indicator):
 
     def new_ema(self, new_data):
         """ This function also makes the EMA class usable on scalar series"""
-        if type(new_data) == np.float64 or type(new_data) == float:
-            # If we get a scalar value, add it to the memory as such:
-            self.memory.append(new_data)
-        elif type(new_data) == pd.core.series.Series:
+        if type(new_data) == pd.core.series.Series:
             # If we get a candle, add the new candle typical price to the memory:
             new_tp = super().get_tp(new_data, self.tp_style)
             self.memory.append(new_tp)
         else:
-            raise TypeError('Wrong data type {} supplied to ema update'.format(type(new_data)))
+            # If we get a scalar value, add it to the memory as such:
+            self.memory.append(new_data)
 
         # Get the previous EMA value:
         if self.history.empty:
             old_ema = self.memory[-1]
         else:
-            old_ema = self.history.tail(1)
+            old_ema = self.history.tail(1).squeeze()
 
         # Calculate the new EMA value:
         new_ema = self.memory[-1] * self.coefficient + old_ema * (1 - self.coefficient)
@@ -132,6 +130,7 @@ class ExponentialMovingAverage(Indicator):
 
     def update(self, new_data):
         new_value = self.new_ema(new_data)
+
         df = pd.DataFrame([new_value])
         # Setting the index of the df:
         try:
@@ -164,8 +163,8 @@ class ExponentialMovingAverage(Indicator):
             self.memory.extend(df.tail(self.window_length))
 
     def plot(self, figure, color='purple'):
-        ema = self.history
-        t = ema.index
+        ema = self.history.values
+        t = self.history.index
         figure.add_trace(go.Scatter(x=t, y=ema, line=dict(color=color), name=self.name),
                          row=1, col=1)
 
@@ -372,52 +371,61 @@ class RSI(Indicator):
 
         self.name = 'RSI' + str(window_length) + '_' + time_frame
 
-        self.avg_gain = ExponentialMovingAverage(window_length, time_frame, tp_style)
-        self.avg_loss = ExponentialMovingAverage(window_length, time_frame, tp_style)
+        # In order to match TradingViews RSI:
+        # TradingView uses Wilder Smoothing, equal to an EMA of length n:
+        n = 2*window_length - 1
+
+        self.avg_gain = ExponentialMovingAverage(n, time_frame, tp_style)
+        self.avg_loss = ExponentialMovingAverage(n, time_frame, tp_style)
 
     def update(self, candle):
         new_tp = super().get_tp(candle, self.tp_style)
         # Calculate all changes inside the window:
+        if self.history.empty:
+            # If this is the first time updating add the previous candle to avoid NaNs everywhere
+            self.memory.append(new_tp)
         change = new_tp - self.memory[-1]
         # Calculate gains and losses (0 if change is not the right sign)
         gain = change*(change > 0)
-        loss = change*(change < 0)
+        loss = abs(change*(change < 0))
         # Update average gain and loss EMA's:
         new_avg_gain = self.avg_gain.update(gain)
         new_avg_loss = self.avg_loss.update(loss)
-        # TODO: check if this works?
-        # self.average_gain = (self.average_gain*(self.window_length-1)+gain)/self.window_length
-        # self.average_loss = (self.average_loss*(self.window_length-1)+abs(loss))/self.window_length
         # Calculate RSI:
-        try:
-            relative_strength = new_avg_gain/new_avg_loss
-            new_rsi = 100 - 100 / (1 + relative_strength)
-        except ZeroDivisionError:
+        if new_avg_loss == 0:
             new_rsi = 100
-        # TODO: start debugging here!
+        else:
+            relative_strength = new_avg_gain / new_avg_loss
+            new_rsi = 100 - 100 / (1 + relative_strength)
+
+        # TODO: As with the EMA, let this become a series instead of df
         df = pd.DataFrame([new_rsi])
         df.index = pd.DatetimeIndex([candle.name])
         self.history = self.history.append(df)
         self.memory.append(new_tp)
 
     def batch_fit(self, candle_batch):
-        if self.history.empty:
-            self.history = []
+        if not self.history.empty:
+            self.history = pd.DataFrame()
             self.memory = deque([np.nan] * (self.window_length + 1), maxlen=self.window_length)
             warnings.warn('Old RSI data has been removed! Make sure that this was your intention', UserWarning)
 
         batch_size = len(candle_batch)
         # TODO: Remove slow for loop!
         print('Sorry, encountered slow for loop...')
+
+        # Check this: https://www.tradingview.com/wiki/Talk:Relative_Strength_Index_(RSI)
         for i in range(batch_size):
             candle = candle_batch.iloc[i]
             self.update(candle)
 
     def plot(self, figure, color='royalblue'):
-        rsi = self.history
-        t = rsi.index
-        figure.add_trace(go.Scatter(x=t, y=rsi, line=dict(color=color, width=3), name=self.name),
-                         row=2, col=1)
+        rsi = self.history.values.squeeze()
+        t = self.history.index
+
+        figure.add_trace(go.Scatter(x=t, y=rsi, line=dict(color=color, width=1), name=self.name),
+                         row=3, col=1)
+
 
 class StochasticRSI(RSI):
     pass

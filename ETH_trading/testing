@@ -33,16 +33,18 @@ ATRChannels26.batch_fit(candles)
 # Stochastic RSI:
 
 # Bollinger band:
+print('Fitting Bollinger Bands...')
 BB20 = ind.BollingerBand(window_length=20, time_frame=time_frame, tp_style='hlc3')
 BB20.batch_fit(candles)
 
 # RSI:
+print('Fitting RSI...')
 RSI = ind.RSI(window_length=14, time_frame=time_frame)
 RSI.batch_fit(candles)
 
 """ Making plots using Plotly """
 # TODO: Plot BB, Stochastic RSI
-print('Plotting...')
+print('\nPlotting...')
 fig = make_subplots(rows=3, cols=1, shared_xaxes=True)
 
 # Bollinger Bands on the background:
