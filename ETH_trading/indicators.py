@@ -6,7 +6,6 @@ import numpy as np
 import pandas as pd
 import warnings
 import plotly.graph_objects as go
-from scipy.linalg import toeplitz
 from scipy.linalg import hankel
 from collections import deque
 
@@ -50,7 +49,7 @@ class MovingAverage(Indicator):
 
     def update(self, new_data):
         # TODO: For a later version, only update if the time_frame matches
-        try:
+        if type(new_data) == pd.core.series.Series:
             # Calculate new MA for a candle input:
             new_tp = super().get_tp(new_data, self.tp_style)
             new_ma = np.nansum(list(self.memory)) / self.window_length
@@ -58,7 +57,7 @@ class MovingAverage(Indicator):
             self.memory.append(new_tp)
             df = pd.DataFrame(new_ma)
             df.index = pd.DatetimeIndex([new_data.name])
-        except IndexError:
+        else:
             # If input is just a single value, do standard MA
             self.memory.append(new_data)
             # Calculate the MA from the new deque:
@@ -324,13 +323,15 @@ class BollingerBand(Indicator):
             warnings.warn('Old BB data has been removed! Make sure that this was your intention.', UserWarning)
 
         tp_batch = np.array(super().get_tp(candle_batch, self.tp_style))
-        tp_matrix = hankel(tp_batch, tp_batch[-self.window_length:])
+        col1 = np.array([np.nan]*(self.window_length-1) + list(tp_batch[:-self.window_length+1]))
+        tp_matrix = hankel(col1, tp_batch[-self.window_length:])
 
         self.ma.batch_fit(candle_batch)
         ma = np.array(self.ma.history)
         with warnings.catch_warnings():
             warnings.simplefilter('ignore')  # numpy complains that std has NaN's but this is OK for us.
-            std = np.nanstd(tp_matrix.T - ma*np.ones((self.window_length, 1)), axis=0)
+            # Make a matrix with each row containing (TP_values_in_window - MA_end_window) then get std over each row.
+            std = np.nanstd(tp_matrix - ma[:, np.newaxis]*np.ones((1, self.window_length)), axis=1)
 
         upper_bb = ma + 2*std
         lower_bb = ma - 2*std
@@ -423,10 +424,68 @@ class RSI(Indicator):
         rsi = self.history.values.squeeze()
         t = self.history.index
 
+        overbought = np.ones(t.shape) * 80
+        oversold = np.ones(t.shape) * 20
+
+        # Plot the overbought line:
+        figure.add_trace(go.Scatter(x=t, y=oversold, line=dict(color='black', width=0.5, dash='dash'), showlegend=False,
+                                    fill=None),
+                         row=3, col=1)
+        # Plot oversold line and fill area:
+        figure.add_trace(go.Scatter(x=t, y=overbought, line=dict(color='black', width=0.5, dash='dash'),
+                                    showlegend=False,
+                                    fill='tonexty', fillcolor='rgba(200,200,200,0.4)'),
+                         row=3, col=1)
+        # Plot the RSI in front of it:
         figure.add_trace(go.Scatter(x=t, y=rsi, line=dict(color=color, width=1), name=self.name),
                          row=3, col=1)
 
 
-class StochasticRSI(RSI):
-    pass
+
+
+
+class Stochastic(Indicator):
+    def __init__(self, window_length, time_frame):
+        super().__init__(window_length, time_frame, tp_style='other')
+
+        k = MovingAverage(3, time_frame, self.tp_style)
+        d = MovingAverage(3, time_frame, self.tp_style)
+
+    # TODO: Make it work for everything from candles to indicators
+
+    def update(self):
+        pass
+
+    def batch_fit(self, data):
+        if type(data) == pd.core.frame.DataFrame:
+            # If input is candles, do this:
+            pass
+        elif issubclass(type(data), Indicator):
+            # If input is an indicator, do this:
+            x = data.history
+        else:
+            pass
+
+    def plot(self, figure):
+        k = self.k.history.values.squeeze()
+        d = self.d.history.values.squeeze()
+        t = self.k.history.index
+
+        overbought = np.ones(t.shape)*90
+        oversold = np.ones(t.shape)*10
+
+        figure.add_trace(go.Scatter(x=t, y=k, line=dict(color='blue', width=1), showlegend=False),
+                         row=2, col=1)
+        figure.add_trace(go.Scatter(x=t, y=d, line=dict(color='orange', width=2), showlegend=False),
+                         row=2, col=1)
+
+        # Plot the overbought line:
+        figure.add_trace(go.Scatter(x=t, y=oversold, line=dict(color='black', width=0.5, dash='dash'), showlegend=False,
+                                    fill=None),
+                         row=2, col=1)
+        # Plot oversold line and fill area:
+        figure.add_trace(go.Scatter(x=t, y=overbought, line=dict(color='black', width=0.5, dash='dash'),
+                                    showlegend=False,
+                                    fill='tonexty', fillcolor='rgba(200,200,200,0.7)'),
+                         row=2, col=1)
 

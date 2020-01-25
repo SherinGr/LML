@@ -236,8 +236,9 @@ def load_data(exchange, pair, time_frame='1h'):
     data_file, mdate = fetch_local_data(exchange, pair, time_frame)
 
     if not data_file == '':
-        ans = input('Existing {} data found, add new candles to the old data? [y/n]\n'.format(time_frame.strip()))
-
+        ans = 'yes'
+        # NOTE: WE AUTOMATICALLY ADD NEW DATA TO EXISTING DATA, UNCOMMENT LINE BELOW FOR OPTION TO MAKE NEW FILE:
+        # ans = input('Existing {} data found, add new candles to the old data? [y/n]\n'.format(time_frame.strip()))
         if ans in ['y', 'Y', 'yes', 'Yes', '']:
             # Use newest file with old data in it:
             file = open(data_file, 'rb')
@@ -248,7 +249,7 @@ def load_data(exchange, pair, time_frame='1h'):
                 candles = new_candles
             else:
                 print('Existing {} data loaded, last modified at {}.\n'.format(time_frame.strip(), mdate) +
-                  'New data will now be added if any is available.\n')
+                      'New data will now be added if any is available.\n')
 
                 candles, success = concatenate_batches(old_candles, new_candles)
                 if not success:
@@ -284,7 +285,7 @@ def save_data(filename, candle_data):  # *objects):
 
 # Load some candles for testing:
 if __name__ == "__main__":
-    _, candles = load_data('Binance', 'ETHUSDT', '15m')
+    _, data = load_data('Binance', 'ETHUSDT', '15m')
 
 
 
