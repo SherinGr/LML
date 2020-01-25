@@ -55,26 +55,20 @@ fig = make_subplots(rows=5, cols=1, shared_xaxes=True,
 BB20.plot(fig)
 # Then Candlesticks:
 fig.append_trace(go.Candlestick(x=candles.index,
-                             open=candles['open'],
-                             high=candles['high'],
-                             low=candles['low'],
-                             close=candles['close'],
-                             showlegend=False),
-              row=1, col=1)
-
-
-#fig.update_layout(xaxis_rangeslider_visible=False)
+                                open=candles['open'],
+                                high=candles['high'],
+                                low=candles['low'],
+                                close=candles['close'],
+                                showlegend=False),
+                 row=1, col=1)
+# fig.update_layout(xaxis_rangeslider_visible=False)
 
 # Then EMA's and ATR channels:
 EMA13.plot(fig)
 ATRChannels26.plot(fig)
-
+# Extra indicators:
 SRSI.plot(fig)
 RSI.plot(fig)
-
-# fig.update_layout(title_text='{} chart of {} on {}'.format(time_frame, pair, exchange),
-#                  xaxis=go.layout.XAxis(autorange=True, rangeslider=dict(autorange=True)),
-#                  yaxis=go.layout.YAxis(autorange=True))
 
 fig.show()
 
