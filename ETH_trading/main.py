@@ -74,11 +74,7 @@ EMA13.plot(fig)
 ATRChannels26.plot(fig)
 # Extra indicators:
 SRSI.plot(fig)
-#RSI.plot(fig)
+# RSI.plot(fig)
 MACD.plot(fig)
 
 fig.show()
-
-
-
-
