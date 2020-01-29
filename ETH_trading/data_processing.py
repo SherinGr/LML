@@ -269,7 +269,7 @@ def load_data(exchange, pair, time_frame='1h'):
 
     num_candles = len(candles)
 
-    print("{} {} candles in the current dataset.\n".format(num_candles, time_frame))
+    print("{} {} candles in the current dataset ({}).\n".format(num_candles, time_frame, data_file))
 
     return data_file, candles
 

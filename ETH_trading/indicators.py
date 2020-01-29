@@ -47,7 +47,8 @@ class Indicator:
 class MovingAverage(Indicator):
     def __init__(self, window_length, time_frame, tp_style='close'):
         super().__init__(window_length, time_frame, tp_style)
-        self.name = 'MA' + str(window_length) + '_' + time_frame
+
+        self.name = 'MA_{}_{}'.format(self.window_length, self.tp_style)
 
     def update(self, new_data):
         if type(new_data) == pd.core.series.Series:
@@ -82,17 +83,16 @@ class MovingAverage(Indicator):
             self.memory = deque([np.nan] * window_length, maxlen=self.window_length)
             warnings.warn('Old MA data has been removed! Make sure that this was your intention', UserWarning)
 
-        if type(data_batch) == pd.core.frame.DataFrame:
-            # TODO: This is not very robust, indicator history is also a DF but not with candles!
+        if self.tp_style == 'other':
+            # MA of list of values:
+            df = pd.DataFrame(data_batch)
+            self.history = df.rolling(self.window_length).mean()
+            self.memory.extend(df.tail(self.window_length).values)
+        else:
             # We get candles as input
             tp_batch = super().get_tp(data_batch, self.tp_style)
             self.history = tp_batch.rolling(self.window_length).mean()
             self.memory.extend(tp_batch.tail(self.window_length))
-        else:
-            # Otherwise assume list or array of values
-            df = pd.DataFrame(data_batch)
-            self.history = df.rolling(self.window_length).mean()
-            self.memory.extend(df.tail(self.window_length).values)
 
     def plot(self, figure, color='purple'):
         ma = self.history.values
@@ -104,19 +104,18 @@ class MovingAverage(Indicator):
 class ExponentialMovingAverage(Indicator):
     def __init__(self, window_length, time_frame, tp_style='close'):
         super().__init__(window_length, time_frame, tp_style)
-        self.name = 'EMA' + str(window_length) + '_' + time_frame
+
+        self.name = 'EMA_{}_{}'.format(self.window_length, self.tp_style)
 
         self.coefficient = 2/(window_length+1)
 
     def new_ema(self, new_data):
         """ This function also makes the EMA class usable on scalar series"""
-        if type(new_data) == pd.core.series.Series:
-            # If we get a candle, add the new candle typical price to the memory:
+        if self.tp_style == 'other':
+            self.memory.append(new_data)
+        else:
             new_tp = super().get_tp(new_data, self.tp_style)
             self.memory.append(new_tp)
-        else:
-            # If we get a scalar value, add it to the memory as such:
-            self.memory.append(new_data)
 
         # Get the previous EMA value:
         if self.history.empty:
@@ -154,14 +153,14 @@ class ExponentialMovingAverage(Indicator):
             self.memory = deque([np.nan] * window_length, maxlen=self.window_length)
             warnings.warn('Old EMA data has been removed! Make sure that this was your intention.', UserWarning)
 
-        try:
-            tp_batch = super().get_tp(data_batch, self.tp_style)
-            self.history = tp_batch.ewm(span=self.window_length).mean()
-            self.memory.extend(tp_batch.tail(self.window_length))
-        except NameError:
+        if self.tp_style == 'other':
             df = pd.DataFrame(data_batch)
             self.history = df.ewm(span=self.window_length).mean()
             self.memory.extend(df.tail(self.window_length).values)
+        else:
+            tp_batch = super().get_tp(data_batch, self.tp_style)
+            self.history = tp_batch.ewm(span=self.window_length).mean()
+            self.memory.extend(tp_batch.tail(self.window_length))
 
     def plot(self, figure, color='purple'):
         ema = self.history.values
@@ -173,9 +172,9 @@ class ExponentialMovingAverage(Indicator):
 class ATR(Indicator):
     def __init__(self, window_length, time_frame):
         super().__init__(window_length, time_frame, tp_style=None)
-        self.name = 'ATR' + str(window_length) + '_' + time_frame
-
         self.ema = ExponentialMovingAverage(window_length, time_frame, tp_style='other')
+
+        self.name = 'ATR_{}_{}'.format(self.window_length, self.ema.tp_style)
 
     def true_range(self, candle):
         prev_candle = self.memory[-1]
@@ -233,6 +232,8 @@ class ATRChannels:
         self.ema = ExponentialMovingAverage(window_length, time_frame)
 
         self.channels = pd.DataFrame()
+
+        self.name = 'ATR Channels_{}_{}'.format(self.ema.window_length, self.ema.tp_style)
 
     def update(self, candle):
         # Update the data:
@@ -295,6 +296,8 @@ class BollingerBand(Indicator):
         self.tp_style = tp_style
 
         self.ma = MovingAverage(window_length, time_frame, self.tp_style)
+
+        self.name = 'BB_{}_{}_{}'.format(self.window_length, self.num_std, self.tp_style)
 
     def get_std(self):
         # No, don't get an STD, just find the standard deviation of the last tp's!
@@ -364,22 +367,66 @@ class BollingerBand(Indicator):
                             row=1, col=1)
 
 
-class MACD:
-    pass
+class MACD():
+    def __init__(self, wl_short, wl_long, wl_signal, time_frame, tp_style):
+        ema_keys = ['long', 'short', 'signal']
+        ema_val = [wl_long, wl_short, wl_signal]
+        self.window_length = dict(zip(ema_keys, ema_val))
+
+        self.tp_style = tp_style
+        self.time_frame = time_frame
+        self.history = pd.DataFrame()
+
+        self.name = 'MACD_{}_{}_{}_{}'.format(wl_short, wl_long, wl_signal, self.tp_style)
+
+        self.ema_l = ExponentialMovingAverage(self.window_length['long'], self.time_frame, self.tp_style)
+        self.ema_s = ExponentialMovingAverage(self.window_length['short'], self.time_frame, self.tp_style)
+        self.signal = ExponentialMovingAverage(self.window_length['signal'], self.time_frame, 'other')
+
+    def update(self, candle):
+        # TODO
+        pass
+
+    def batch_fit(self, candle_batch):
+        self.ema_l.batch_fit(candle_batch)
+        self.ema_s.batch_fit(candle_batch)
+
+        ema_diff = self.ema_s.history - self.ema_l.history
+        self.signal.batch_fit(ema_diff)
+        histogram = ema_diff - self.signal.history.values.squeeze()
+
+        self.history = pd.concat([ema_diff, self.signal.history, histogram], axis=1)
+        self.history.columns = ['EMA_diff', 'signal', 'hist']
+
+    def plot(self, figure):
+        ema_diff = self.history['EMA_diff'].values.squeeze()
+        signal = self.history['signal'].values.squeeze()
+        hist = self.history['hist'].values.squeeze()
+
+        t = self.history.index
+
+        # Plot the ema and signal line:
+        figure.append_trace(go.Scatter(x=t, y=ema_diff, line=dict(color='blue', width=0.5), showlegend=False),
+                            row=5, col=1)
+        figure.append_trace(go.Scatter(x=t, y=signal, line=dict(color='orange', width=1), showlegend=False),
+                            row=5, col=1)
+        # Plot histogram:
+        figure.append_trace(go.Bar(x=t, y=hist),
+                            row=5, col=1)
 
 
 class RSI(Indicator):
     def __init__(self, time_frame, window_length=14, tp_style='close'):
         super().__init__(window_length, time_frame, tp_style)
 
-        self.name = 'RSI' + str(window_length) + '_' + time_frame
+        self.name = 'RSI_{}_{}'.format(self.window_length, self.tp_style)
 
         # In order to match TradingViews RSI:
         # TradingView uses Wilder Smoothing, equal to an EMA of length n:
-        n = 2*window_length - 1
+        n = 2*self.window_length - 1
 
-        self.avg_gain = ExponentialMovingAverage(n, time_frame, tp_style='other')
-        self.avg_loss = ExponentialMovingAverage(n, time_frame, tp_style='other')
+        self.avg_gain = ExponentialMovingAverage(n, self.time_frame, tp_style='other')
+        self.avg_loss = ExponentialMovingAverage(n, self.time_frame, tp_style='other')
 
     def update(self, candle):
         new_tp = super().get_tp(candle, self.tp_style)
@@ -401,7 +448,6 @@ class RSI(Indicator):
             relative_strength = new_avg_gain / new_avg_loss
             new_rsi = 100 - 100 / (1 + relative_strength)
 
-        # TODO: As with the EMA, let this become a series instead of df
         df = pd.DataFrame([new_rsi])
         df.index = pd.DatetimeIndex([candle.name])
         self.history = self.history.append(df)
@@ -413,14 +459,25 @@ class RSI(Indicator):
             self.memory = deque([np.nan] * (self.window_length + 1), maxlen=self.window_length)
             warnings.warn('Old RSI data has been removed! Make sure that this was your intention', UserWarning)
 
-        batch_size = len(candle_batch)
-        # TODO: Remove slow for loop!
-        print('Sorry, encountered slow for loop...')
+        changes = candle_batch[self.tp_style].diff()
+        gains = abs(changes * (changes > 0))
+        losses = abs(changes * (changes < 0))
 
-        # Check this: https://www.tradingview.com/wiki/Talk:Relative_Strength_Index_(RSI)
-        for i in range(batch_size):
-            candle = candle_batch.iloc[i]
-            self.update(candle)
+        self.avg_gain.batch_fit(gains)
+        self.avg_loss.batch_fit(losses)
+        # TODO: These histories to not have a timestamp! Can do so by making a dataframe of gains/losses before batch
+        #  fit
+
+        avg_gain = self.avg_gain.history
+        avg_loss = self.avg_loss.history
+
+        relative_strength = avg_gain/avg_loss
+        rsi = 100 - 100/(1 + relative_strength)
+
+        df = pd.DataFrame(rsi)
+        df.index = pd.DatetimeIndex(candle_batch.index)
+        self.history = df
+        self.memory.extend(candle_batch.tail(self.window_length))
 
     def plot(self, figure, color='royalblue'):
         rsi = self.history.values.squeeze()
@@ -447,14 +504,16 @@ class Stochastic(Indicator):
     def __init__(self, window_length, time_frame):
         super().__init__(window_length, time_frame, tp_style='other')
 
-        self.k = MovingAverage(3, time_frame, self.tp_style)  # fast stochastic
-        self.d = MovingAverage(3, time_frame, self.tp_style)  # slow stochastic
+        self.short_window = 3
+        self.k = MovingAverage(self.short_window, time_frame, self.tp_style)  # fast stochastic
+        self.d = MovingAverage(self.short_window, time_frame, self.tp_style)  # slow stochastic
+
+        self.name = 'Stoch_{}_{}'.format(self.window_length, self.short_window)
 
     def update(self):
         # TODO
         pass
 
-    # TODO: K-line does not look good yet. X-axis is not shared. Rangeslider plotter over this, bad.
     def batch_fit(self, something):
         if not self.history.empty:
             self.history = []
@@ -485,7 +544,7 @@ class Stochastic(Indicator):
         stochastic = np.divide(data - period_low, period_high - period_low)
 
         self.k.batch_fit(stochastic)
-        self.d.batch_fit(self.k.history.values)  # this should go wrong now! Should be self.history!
+        self.d.batch_fit(self.k.history)  # this should go wrong now! Should be self.history!
 
         # Save stochastic history:
         df = pd.DataFrame.from_dict(stochastic)

@@ -45,6 +45,11 @@ print('Fitting Stochastic RSI...')
 SRSI = ind.Stochastic(window_length=14, time_frame=time_frame)
 SRSI.batch_fit(RSI)
 
+# MACD:
+print('Fitting MACD...')
+MACD = ind.MACD(12, 26, 9, time_frame, 'close')
+MACD.batch_fit(candles)
+
 """ Making plots using Plotly """
 print('\nPlotting...')
 fig = make_subplots(rows=5, cols=1, shared_xaxes=True,
@@ -61,6 +66,7 @@ fig.append_trace(go.Candlestick(x=candles.index,
                                 close=candles['close'],
                                 showlegend=False),
                  row=1, col=1)
+
 # fig.update_layout(xaxis_rangeslider_visible=False)
 
 # Then EMA's and ATR channels:
@@ -68,7 +74,8 @@ EMA13.plot(fig)
 ATRChannels26.plot(fig)
 # Extra indicators:
 SRSI.plot(fig)
-RSI.plot(fig)
+#RSI.plot(fig)
+MACD.plot(fig)
 
 fig.show()
 
