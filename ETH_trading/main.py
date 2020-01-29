@@ -32,7 +32,7 @@ ATRChannels26.batch_fit(candles)
 
 # Bollinger band:
 print('Fitting Bollinger Bands...')
-BB20 = ind.BollingerBand(window_length=20, time_frame=time_frame, tp_style='hlc3')
+BB20 = ind.BollingerBand(window_length=80, time_frame=time_frame, tp_style='hlc3')
 BB20.batch_fit(candles)
 
 # RSI:
@@ -42,8 +42,8 @@ RSI.batch_fit(candles)
 
 # Stochastic RSI:
 print('Fitting Stochastic RSI...')
-SRSI = ind.Stochastic(window_length=14, time_frame=time_frame)
-SRSI.batch_fit(RSI)
+SRSI = ind.StochasticRSI(stoch_length=14, time_frame=time_frame)
+SRSI.batch_fit(candles)
 
 # MACD:
 print('Fitting MACD...')

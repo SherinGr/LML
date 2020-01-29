@@ -98,7 +98,7 @@ class MovingAverage(Indicator):
         ma = self.history.values
         t = self.history.index
         figure.append_trace(go.Scatter(x=t, y=ma, line=dict(color=color), name=self.name),
-                         row=1, col=1)
+                            row=1, col=1)
 
 
 class ExponentialMovingAverage(Indicator):
@@ -166,7 +166,7 @@ class ExponentialMovingAverage(Indicator):
         ema = self.history.values
         t = self.history.index
         figure.append_trace(go.Scatter(x=t, y=ema, line=dict(color=color), name=self.name),
-                         row=1, col=1)
+                            row=1, col=1)
 
 
 class ATR(Indicator):
@@ -277,7 +277,7 @@ class ATRChannels:
         t = channels.index
         # Plot the EMA:
         figure.append_trace(go.Scatter(x=t, y=ema.history, line=dict(color='orange'), name=ema.name),
-                         row=1, col=1)
+                            row=1, col=1)
 
         # Drop columns that we do not want to plot up next:
         channels = channels.drop(columns=['+1', 'EMA', '-1'])
@@ -285,8 +285,8 @@ class ATRChannels:
         cols = channels.columns
         for c in cols:
             figure.append_trace(go.Scatter(x=t, y=channels[c], line=dict(color='black', width=(abs(int(c)) - 1) / 2),
-                                        showlegend=False),
-                             row=1, col=1)
+                                           showlegend=False),
+                                row=1, col=1)
 
 
 class BollingerBand(Indicator):
@@ -367,7 +367,7 @@ class BollingerBand(Indicator):
                             row=1, col=1)
 
 
-class MACD():
+class MACD:
     def __init__(self, wl_short, wl_long, wl_signal, time_frame, tp_style):
         ema_keys = ['long', 'short', 'signal']
         ema_val = [wl_long, wl_short, wl_signal]
@@ -490,8 +490,8 @@ class RSI(Indicator):
         oversold = np.ones(t.shape) * 20
 
         # Plot the overbought line:
-        figure.append_trace(go.Scatter(x=t, y=oversold, line=dict(color='black', width=0.5, dash='dash'), showlegend=False,
-                                       fill=None),
+        figure.append_trace(go.Scatter(x=t, y=oversold, line=dict(color='black', width=0.5, dash='dash'),
+                                       showlegend=False, fill=None),
                             row=5, col=1)
         # Plot oversold line and fill area:
         figure.append_trace(go.Scatter(x=t, y=overbought, line=dict(color='black', width=0.5, dash='dash'),
@@ -513,9 +513,9 @@ class Stochastic(Indicator):
 
         self.name = 'Stoch_{}_{}'.format(self.window_length, self.short_window)
 
-    def update(self):
+    def update(self, new_data):
         # TODO
-        pass
+        return NotImplementedError('Step update not implemented yet for the stochastic, sorry!')
 
     def batch_fit(self, something):
         if not self.history.empty:
@@ -547,7 +547,7 @@ class Stochastic(Indicator):
         stochastic = np.divide(data - period_low, period_high - period_low)
 
         self.k.batch_fit(stochastic)
-        self.d.batch_fit(self.k.history)  # this should go wrong now! Should be self.history!
+        self.d.batch_fit(self.k.history)
 
         # Save stochastic history:
         df = pd.DataFrame.from_dict(stochastic)
@@ -580,3 +580,41 @@ class Stochastic(Indicator):
                             row=4, col=1)
 
 
+class StochasticRSI(Indicator):
+    def __init__(self, stoch_length, time_frame, tp_style='other'):
+        super().__init__(stoch_length, time_frame, tp_style)
+
+        self.rsi = RSI(time_frame)  # window length automatically set to 14, better not to touch this
+        self.stoch = Stochastic(stoch_length, time_frame)
+
+    def update(self, candle):
+        self.rsi.update(candle)
+        new_rsi = self.rsi.history.tail(1)
+        self.stoch.update(new_rsi)
+
+    def batch_fit(self, candle_batch):
+        self.rsi.batch_fit(candle_batch)
+        self.stoch.batch_fit(self.rsi)
+
+    def plot(self, figure):
+        k = self.stoch.k.history.values.squeeze() * 100
+        d = self.stoch.d.history.values.squeeze() * 100
+        t = self.stoch.history.index
+
+        overbought = np.ones(t.shape) * 90
+        oversold = np.ones(t.shape) * 10
+
+        # Plot the overbought line:
+        figure.append_trace(go.Scatter(x=t, y=oversold, line=dict(color='black', width=0.5, dash='dash'),
+                                       showlegend=False, fill=None),
+                            row=4, col=1)
+        # Plot oversold line and fill area:
+        figure.append_trace(go.Scatter(x=t, y=overbought, line=dict(color='black', width=0.5, dash='dash'),
+                                       showlegend=False,
+                                       fill='tonexty', fillcolor='rgba(200,200,200,0.4)'),
+                            row=4, col=1)
+        # Plot the stochastics:
+        figure.append_trace(go.Scatter(x=t, y=k, line=dict(color='blue', width=1), showlegend=False),
+                            row=4, col=1)
+        figure.append_trace(go.Scatter(x=t, y=d, line=dict(color='orange', width=2), showlegend=False),
+                            row=4, col=1)
