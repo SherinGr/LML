@@ -403,6 +403,9 @@ class MACD():
         signal = self.history['signal'].values.squeeze()
         hist = self.history['hist'].values.squeeze()
 
+        # TODO: If desired, make a color list for all bars to get standard appearance:
+        # https: // community.plot.ly / t / different - colors - for -bars - in -barchart - by - their - value / 6527
+
         t = self.history.index
 
         # Plot the ema and signal line:

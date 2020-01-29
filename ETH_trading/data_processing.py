@@ -181,7 +181,6 @@ def merge_all_files(time_frame):
     for f in files_list:
         file = open(f, 'rb')
         data = pickle.load(file)
-        print(str(type(data)) + f)
         if not data.empty:
             all_data = all_data + [data]
 
@@ -285,6 +284,7 @@ def save_data(filename, candle_data):  # *objects):
 
 # Load some candles for testing:
 if __name__ == "__main__":
+    # merge_all_files('15m')
     _, data = load_data('Binance', 'ETHUSDT', '15m')
 
 
