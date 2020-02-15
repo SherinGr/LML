@@ -32,6 +32,16 @@ pairs = [
     {'label': 'XRP/USDT', 'value': 'XRPUSDT'},
          ]
 
+types = [
+    {'label': 'pullback to value', 'value': 'pullback to value'},
+    {'label': 'ATR extreme', 'value': 'ATR extreme'},
+    {'label': 'price rejection', 'value': 'price rejection'}  # support/resistance
+]
+
+directions = [
+    {'label': 'LONG', 'value': 'LONG'},
+    {'label': 'SHORT', 'value': 'SHORT'}
+]
 
 open_trade_cols = ['pair', 'size', 'entry', 'stop', 'direction']
 open_trade_dict = [{'name': c, 'id': c} for c in open_trade_cols]
@@ -130,16 +140,37 @@ app.layout = html.Div(
                         dcc.Input(id='entry', placeholder=0.0, type='number', value=np.nan, min=0, style={'width':
                                                                                                               '50px'})
                     ],
-                    style={'width': '20%', 'display': 'inline-block'}
+                    style={'width': '10%', 'display': 'inline-block'}
                 ),
                 html.Div(
                     [
                         html.P('Amount:'),
                         dcc.Input(id='size', placeholder=0.0, type='number', value=np.nan, min=0)
                     ],
+                    style={'width': '10%', 'display': 'inline-block'}
+                ),
+                html.Div(
+                    [
+                        html.P('Stop loss:'),
+                        dcc.Input(id='stop', placeholder=0.0, type='number', value=np.nan, min=0)
+                    ],
+                    style={'width': '10%', 'display': 'inline-block'}
+                ),
+                html.Div(
+                    [
+                        html.P('Trade type:'),
+                        dcc.Dropdown(id='type', options=types, value='')
+                    ],
                     style={'width': '20%', 'display': 'inline-block'}
-                )
-
+                ),
+                html.Div(
+                    [
+                        html.P('Direction:'),
+                        dcc.RadioItems(id='direction', options=directions, value='')
+                    ],
+                    style={'width': '30%', 'display': 'inline-block'}
+                ),
+                html.Button('Open Trade', id='button')
             ],
             className="pretty_container twelve columns",
             id="enter-trade"
