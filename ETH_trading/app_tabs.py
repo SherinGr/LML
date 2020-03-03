@@ -64,11 +64,12 @@ open_trade_tab = html.Div(
                 # CONTAINER FOR ENTERING A NEW TRADE
                 html.Div(
                     [
-                        html.H6('Add new trade'),
+                        html.H6('Add new trade:'),
                         html.Div(
                             [
                                 html.P('Pair:'),
-                                dcc.Dropdown(id='pair', options=pairs, value='ETHUSDT'),
+                                dcc.Dropdown(id='pair', options=pairs, value='ETHUSDT',
+                                             style={'width': '95%'}),
                             ],
                             style={'width': '20%', 'display': 'inline-block'}
                         ),
@@ -76,45 +77,60 @@ open_trade_tab = html.Div(
                             [
                                 html.P('Entry:'),
                                 dcc.Input(id='entry', placeholder=0.0, type='number', value=np.nan, min=0,
-                                          style={'width':
-                                                     '50px'})
+                                          style={'width': '90%'})
                             ],
-                            style={'width': '10%', 'display': 'inline-block'}
+                            style={'width': '15%', 'display': 'inline-block'}
                         ),
                         html.Div(
                             [
                                 html.P('Amount:'),
-                                dcc.Input(id='size', placeholder=0.0, type='number', value=np.nan, min=0)
+                                dcc.Input(id='size', placeholder=0.0, type='number', value=np.nan, min=0,
+                                          style={'width': '90%'})
                             ],
-                            style={'width': '10%', 'display': 'inline-block'}
+                            style={'width': '15%', 'display': 'inline-block'}
                         ),
                         html.Div(
                             [
                                 html.P('Stop loss:'),
-                                dcc.Input(id='stop', placeholder=0.0, type='number', value=np.nan, min=0)
+                                dcc.Input(id='stop', placeholder=0.0, type='number', value=np.nan, min=0,
+                                          style={'width': '90%'})
                             ],
-                            style={'width': '10%', 'display': 'inline-block'}
+                            style={'width': '15%', 'display': 'inline-block'}
                         ),
                         html.Div(
                             [
                                 html.P('Trade type:'),
-                                dcc.Dropdown(id='type', options=types, value='')
+                                dcc.Dropdown(id='type', options=types, value='',
+                                             style={'width': '95%'})
                             ],
-                            style={'width': '20%', 'display': 'inline-block'}
+                            style={'width': '20%', 'display': 'inline-block'},
                         ),
                         html.Div(
                             [
                                 html.P('Direction:'),
-                                dcc.RadioItems(id='direction', options=directions, value='')
+                                dcc.RadioItems(id='direction', options=directions, value='',
+                                               style={'display': 'inline'})
                             ],
-                            style={'width': '30%', 'display': 'inline-block'}
+                            style={'width': '15%', 'display': 'inline-block'}
                         ),
-                        html.Button('Open Trade', id='button')
+                        html.Div(
+                            [
+                                html.P('Confidence:'),
+                                dcc.Slider(id='confidence', min=1, max=3, step=None, value=2,
+                                           marks={1: 'Unsure', 2: 'OK', 3: 'Gonna Win!'})
+                            ],
+                            style={'width': '49%', 'display': 'inline-block'}
+                        ),
+
+                        # TODO: Make the layout work properly
+                        html.Button('Open Trade', id='button',
+                                    style={'display': 'inline-block'})
                     ],
                     className="pretty_container twelve columns",
                     id="enter-trade"
                 ),
                 # CONTAINER FOR OPEN POSITIONS
+                html.Div([
                 html.Div(
                     [
                         html.H6('Open Positions:'),
@@ -139,7 +155,7 @@ open_trade_tab = html.Div(
                         )
                     ],
                     className="pretty_container seven columns",
-                    style={'margin-left': 0},
+                    style={'display': 'flex'},
                     id="open-positions"
                 ),
                 # CONTAINER FOR CLOSING AN OPEN POSITION
@@ -148,9 +164,10 @@ open_trade_tab = html.Div(
                         html.H6('CLOSE AN OPEN POSITION, OR MAYBE OPEN RISK AND OPEN P/L?')
                     ],
                     className="pretty_container four columns",
-                    # style={},
+                    style={'display': 'flex'},
                     id="close-position"
                 )
+                ])
             ]
         )
 

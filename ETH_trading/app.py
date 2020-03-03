@@ -14,6 +14,7 @@ import dash_table
 import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output
+
 from app_tabs import *
 
 colors = {
@@ -29,10 +30,14 @@ app.layout = html.Div(
                 style={'margin-top': '0px', 'color': colors['text'], 'text-align': 'center'}),
         html.H5("Good records are key to consistent profits",
                 style={'margin-top': '0px', 'color': colors['text'], 'text-align': 'center'}),
-        dcc.Tabs(id='app_tabs', value='open', vertical=False, children=[
-            dcc.Tab(label='Open Trade', value='open'),
-            dcc.Tab(label='Close Trade', value='close'),
-            dcc.Tab(label='Performance', value='perf')
+        dcc.Tabs(id='app_tabs', value='open', parent_className='custom_tabs', className='custom_tabs_container',
+                 children=[
+            dcc.Tab(label='Open Trade', value='open',
+                    className='custom_tab', selected_className='custom_tab__selected'),
+            dcc.Tab(label='Close Trade', value='close',
+                    className='custom_tab', selected_className='custom_tab__selected'),
+            dcc.Tab(label='Performance', value='perf',
+                    className='custom_tab', selected_className='custom_tab__selected')
         ]),
         html.Div(id='tab_content')
     ]
