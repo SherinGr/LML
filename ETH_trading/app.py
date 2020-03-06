@@ -1,11 +1,9 @@
 # DASH application (GUI) for record keeping and inspecting performance.
 # TODO:
 #   1. Make a GUI to enter trade diary information, edit it and save it in a (csv?) file
-#   2. Add capital tracking tab
 
 # TODO:
-#   1. Set standard size for input boxes narrower
-#   2. Fix horizontal alignment of Pair box.
+#   1. Fix horizontal alignment of Pair box.
 
 import pandas as pd
 import numpy as np
