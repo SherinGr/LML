@@ -40,6 +40,7 @@ def edit_trade(diary, id):
     # user selected an open trade and wants to edit it
     pass
 
+
 def close_trade(diary, id):
     # User selects an open trade and wants to close it (edit it).
     pass

@@ -17,9 +17,10 @@ import dash
 import dash_table
 import dash_core_components as dcc
 import dash_html_components as html
-from dash.dependencies import Input, Output
+from dash.dependencies import Input, Output, State
 
 from app_tabs import *
+from callbacks import *
 
 colors = {
     'background': '#313e5c',
@@ -36,13 +37,14 @@ app.layout = html.Div(
                 style={'margin-top': '0px', 'color': colors['text'], 'text-align': 'center'}),
         dcc.Tabs(id='app_tabs', value='open', parent_className='custom_tabs', className='custom_tabs_container',
                  children=[
-            dcc.Tab(label='Open Trade', value='open',
-                    className='custom_tab', selected_className='custom_tab__selected'),
-            dcc.Tab(label='Close Trade', value='close',
-                    className='custom_tab', selected_className='custom_tab__selected'),
-            dcc.Tab(label='Performance', value='perf',
-                    className='custom_tab', selected_className='custom_tab__selected')
-        ]),
+                        dcc.Tab(label='Open Trade', value='open',
+                                className='custom_tab', selected_className='custom_tab__selected'),
+                        dcc.Tab(label='Close Trade', value='close',
+                                className='custom_tab', selected_className='custom_tab__selected'),
+                        dcc.Tab(label='Performance', value='perf',
+                                className='custom_tab', selected_className='custom_tab__selected')
+                        ]
+                 ),
         html.Div(id='tab_content')
     ]
 )
@@ -61,36 +63,6 @@ def render_content(tab):
         return html.H1('Performance')
     else:
         raise NameError('Tab with name "' + tab + '" does not exist')
-
-
-@app.callback(Output('open_table', 'data'), Input('button', 'n_clicks'),
-              [State('pair', 'value'),
-               State('entry', 'value'),
-               State('size', 'value'),
-               State('stop', 'value'),
-               State('type', 'value'),
-               State('direction', 'value'),
-               State('confidence', 'value')]
-              )
-def submit_trade(clicks, pair, entry, size, stop, type, direction, confidence):
-    # Add new trade at the top of the diary excel file:
-    index = pd.DatetimeIndex([datetime.datetime.now()])
-    # trade = pd.DataFrame(columns=open_trade_dict, index=index)
-    trade = pd.Dataframe({
-        'pair': pair, 'entry': entry, 'size': size, 'stop': stop, 'type': type, 'direction': direction, 'confidence':
-            confidence
-    }, index=index)
-
-    with pd.ExcelWriter(path=diary, engine='openpyxl', datetime_format='DD-MM-YYYY hh:mm', mode='a') as \
-            writer:
-        # Open the file:
-        writer.book = load_workbook(diary)
-        # Copy existing sheets:
-        writer.sheets = dict((ws.title, ws) for ws in writer.book.worksheets)
-        # Add new trade on top of the existing data:
-        writer.book['closed'].insert_rows(2)
-        trade.to_excel(writer, sheet_name='closed', startrow=1, header=None, index_label='date')
-        writer.close()
 
 
 if __name__ == '__main__':

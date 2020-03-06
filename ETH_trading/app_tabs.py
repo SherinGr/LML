@@ -58,7 +58,6 @@ def get_closed_trades(record_file):
 
 """ The actual tabs """
 
-
 open_trade_tab = html.Div(
             [
                 # CONTAINER FOR ENTERING A NEW TRADE
@@ -131,42 +130,42 @@ open_trade_tab = html.Div(
                 ),
                 # CONTAINER FOR OPEN POSITIONS
                 html.Div([
-                html.Div(
-                    [
-                        html.H6('Open Positions:'),
-                        dash_table.DataTable(
-                            id='open_table',
-                            columns=open_trade_dict,
-                            data=get_open_trades(diary),
-                            style_table={
-                                'height': '100px',
-                                'overflow-y': 'scroll'
-                            },
-                            # You can use style conditional to color profitable and losing trades!
-                            style_cell_conditional=[
-                                {
-                                    'if': {'column_id': c},
-                                    'text-align': 'center'
-                                } for c in ['pair', 'direction']
-                            ],
-                            style_as_list_view=True,
-                            style_cell={'padding': '5px'},
-                            style_header={'background-color': 'white', 'font-weight': 'bold'}
-                        )
-                    ],
-                    className="pretty_container seven columns",
-                    style={'display': 'flex'},
-                    id="open-positions"
-                ),
-                # CONTAINER FOR CLOSING AN OPEN POSITION
-                html.Div(
-                    [
-                        html.H6('CLOSE AN OPEN POSITION, OR MAYBE OPEN RISK AND OPEN P/L?')
-                    ],
-                    className="pretty_container four columns",
-                    style={'display': 'flex'},
-                    id="close-position"
-                )
+                    html.Div(
+                        [
+                            html.H6('Open Positions:'),
+                            dash_table.DataTable(
+                                id='open_table',
+                                columns=open_trade_dict,
+                                data=get_open_trades(diary),
+                                style_table={
+                                    'height': '100px',
+                                    'overflow-y': 'scroll'
+                                },
+                                # You can use style conditional to color profitable and losing trades!
+                                style_cell_conditional=[
+                                    {
+                                        'if': {'column_id': c},
+                                        'text-align': 'center'
+                                    } for c in ['pair', 'direction']
+                                ],
+                                style_as_list_view=True,
+                                style_cell={'padding': '5px'},
+                                style_header={'background-color': 'white', 'font-weight': 'bold'}
+                            )
+                        ],
+                        className="pretty_container seven columns",
+                        style={'display': 'flex'},
+                        id="open-positions"
+                    ),
+                    # CONTAINER FOR CLOSING AN OPEN POSITION
+                    html.Div(
+                        [
+                            html.H6('CLOSE AN OPEN POSITION, OR MAYBE OPEN RISK AND OPEN P/L?')
+                        ],
+                        className="pretty_container four columns",
+                        style={'display': 'flex'},
+                        id="close-position"
+                    )
                 ])
             ]
         )
@@ -196,3 +195,5 @@ close_trade_tab = html.Div(
             ],
             className="pretty_container twelve columns"
         )
+
+
