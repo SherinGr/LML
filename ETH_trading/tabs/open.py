@@ -1,15 +1,18 @@
-import pandas as pd
 import numpy as np
+import pandas as pd
+import datetime
+
+from openpyxl import load_workbook
+
+import dash_table
 import dash_core_components as dcc
 import dash_html_components as html
-import dash_table
 
+from dash.dependencies import Input, Output, State
 
-""" Some constants to construct the tabs"""
+from app import app
+from app import diary
 
-
-diary = 'trading_diary.xlsx'
-# TODO: I do not like that I have to define this variable here
 
 # DICTIONARIES FOR DROPDOWNS AND RABIO BUTTONS ETC.:
 pairs = [
@@ -33,10 +36,6 @@ directions = [
 open_trade_cols = ['pair', 'size', 'entry', 'stop', 'direction']
 open_trade_dict = [{'name': c, 'id': c} for c in open_trade_cols]
 
-closed_trade_cols = ['pair', 'size', 'entry', 'exit', 'stop', 'P/L (USDT)', 'P/L (%)', 'pre capital',
-                     'risk', 'rrr', 'direction', 'type', 'confidence', 'note']
-closed_trade_dict = [{'name': c, 'id': c} for c in closed_trade_cols]
-
 
 """ Functions to read trades from the records """
 
@@ -48,17 +47,10 @@ def get_open_trades(record_file):
     return table_data
 
 
-def get_closed_trades(record_file):
-    closed_trades = pd.read_excel(record_file, sheet_name='closed')
-    # closed_trades = closed_trades.drop(columns=['date'])
-    # TODO: make sure to drop the right columns here to match the table dict!
-    table_data = closed_trades.to_dict(orient='records')
-    return table_data
+""" The actual tab """
 
 
-""" The actual tabs """
-
-open_trade_tab = html.Div(
+layout = html.Div(
             [
                 # CONTAINER FOR ENTERING A NEW TRADE
                 html.Div(
@@ -68,7 +60,7 @@ open_trade_tab = html.Div(
                             [
                                 html.P('Pair:'),
                                 dcc.Dropdown(id='pair', options=pairs, value='ETHUSDT',
-                                             style={'width': '95%'}),
+                                             style={'width': '85%'}),
                             ],
                             style={'width': '20%', 'display': 'inline-block'}
                         ),
@@ -121,8 +113,7 @@ open_trade_tab = html.Div(
                             style={'width': '49%', 'display': 'inline-block'}
                         ),
 
-                        # TODO: Make the layout work properly
-                        html.Button('Open Trade', id='button',
+                        html.Button('Enter Trade', id='button',
                                     style={'display': 'inline-block'})
                     ],
                     className="pretty_container twelve columns",
@@ -154,46 +145,61 @@ open_trade_tab = html.Div(
                             )
                         ],
                         className="pretty_container seven columns",
-                        style={'display': 'flex'},
+                        style={'display': 'inline-block', 'margin-left': '0', 'margin-top': '0'},
                         id="open-positions"
                     ),
                     # CONTAINER FOR CLOSING AN OPEN POSITION
                     html.Div(
                         [
                             html.H6('CLOSE AN OPEN POSITION, OR MAYBE OPEN RISK AND OPEN P/L?')
+
                         ],
-                        className="pretty_container four columns",
-                        style={'display': 'flex'},
+                        className="pretty_container",
+                        style={'display': 'flex', 'margin-right': '0'},
                         id="close-position"
                     )
                 ])
             ]
         )
 
-close_trade_tab = html.Div(
-            [
-                html.H6('Closed Trades:'),
-                dash_table.DataTable(
-                    id='closed_table',
-                    columns=closed_trade_dict,
-                    data=get_closed_trades(diary),
-                    style_table={
-                      'height': '250px',
-                      'overflow-y': 'scroll'
-                    },
-                    # You can use style conditional to color profitable and losing trades!
-                    style_cell_conditional=[
-                        {
-                            'if': {'column_id': c},
-                            'text-align': 'center'
-                        } for c in ['pair', 'direction']
-                    ],
-                    style_as_list_view=True,
-                    style_cell={'padding': '5px'},
-                    style_header={'background-color': 'white', 'font-weight': 'bold'}
-                )
-            ],
-            className="pretty_container twelve columns"
-        )
 
+@app.callback(Output('entry', 'value'), [Input('button', 'n_clicks')],
+              [State('pair', 'value'),
+               State('entry', 'value'),
+               State('size', 'value'),
+               State('stop', 'value'),
+               State('type', 'value'),
+               State('direction', 'value'),
+               State('confidence', 'value')]
+              )
+def submit_trade(clicks, pair, entry, size, stop, idea, direction, confidence):
+    if clicks:
+        pass
+    elif any(x == 0 for x in [entry, size, stop]) or idea == '' or direction == '':
+        # TODO: MAKE COLOR OF BUTTON RED
+        pass
+    # TODO: Check if data of trade is complete:
+    # TODO: Change . into , for excell
 
+    # Add new trade at the top of the diary excel file:
+    index = pd.DatetimeIndex([datetime.datetime.now()])
+    # trade = pd.DataFrame(columns=open_trade_dict, index=index)
+    trade = pd.DataFrame({
+        'pair': pair, 'entry': entry, 'size': size, 'stop': stop, 'type': idea, 'direction': direction,
+        'confidence':
+            confidence
+    }, index=index)
+
+    with pd.ExcelWriter(path=diary, engine='openpyxl', datetime_format='DD-MM-YYYY hh:mm', mode='a') as \
+            writer:
+        # Open the file:
+        writer.book = load_workbook(diary)
+        # Copy existing sheets:
+        writer.sheets = dict((ws.title, ws) for ws in writer.book.worksheets)
+        # Add new trade on top of the existing data:
+        sheet = 'open'
+        writer.book[sheet].insert_rows(2)
+        trade.to_excel(writer, sheet_name=sheet, startrow=1, header=None, index_label='date')
+        writer.close()
+
+    return 0
