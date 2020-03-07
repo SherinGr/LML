@@ -22,17 +22,17 @@ colors = {
 app.layout = html.Div(
     [
         html.H1('- TRADING WORKBOOK -',
-                style={'margin-top': '0px', 'color': colors['text'], 'text-align': 'center'}),
-        html.H5("Good records are key to consistent profits",
-                style={'margin-top': '0px', 'color': colors['text'], 'text-align': 'center'}),
-        dcc.Tabs(id='app_tabs', value='open', parent_className='custom_tabs', className='custom_tabs_container',
+                style={'margin-top': '0', 'margin-bottom': '0', 'color': colors['text'], 'text-align': 'center'}),
+        # html.H5("Good records are key to consistent profits",
+        #        style={'margin-top': '0px', 'color': colors['text'], 'text-align': 'center'}),
+        dcc.Tabs(id='app_tabs', value='open', parent_className='custom-tabs', className='custom-tabs-container',
                  children=[
                         dcc.Tab(label='Open Trade', value='open',
-                                className='custom_tab', selected_className='custom_tab__selected'),
+                                className='custom-tab', selected_className='custom-tab--selected'),
                         dcc.Tab(label='Close Trade', value='close',
-                                className='custom_tab', selected_className='custom_tab__selected'),
+                                className='custom-tab', selected_className='custom-tab--selected'),
                         dcc.Tab(label='Performance', value='perf',
-                                className='custom_tab', selected_className='custom_tab__selected')
+                                className='custom-tab', selected_className='custom-tab--selected')
                         ]
                  ),
         html.Div(id='tab_content')

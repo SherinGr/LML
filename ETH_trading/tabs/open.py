@@ -60,9 +60,9 @@ layout = html.Div(
                             [
                                 html.P('Pair:'),
                                 dcc.Dropdown(id='pair', options=pairs, value='ETHUSDT',
-                                             style={'width': '85%'}),
+                                             style={'width': '97%', 'display': 'block'}),
                             ],
-                            style={'width': '20%', 'display': 'inline-block'}
+                            style={'width': '25%', 'display': 'inline-block'}
                         ),
                         html.Div(
                             [
@@ -92,31 +92,36 @@ layout = html.Div(
                             [
                                 html.P('Trade type:'),
                                 dcc.Dropdown(id='type', options=types, value='',
-                                             style={'width': '95%'})
+                                             style={'width': '100%', 'display': 'block'})
                             ],
-                            style={'width': '20%', 'display': 'inline-block'},
+                            style={'width': '30%', 'display': 'inline-block'},
                         ),
-                        html.Div(
-                            [
-                                html.P('Direction:'),
-                                dcc.RadioItems(id='direction', options=directions, value='',
-                                               style={'display': 'inline'})
-                            ],
-                            style={'width': '15%', 'display': 'inline-block'}
-                        ),
+
                         html.Div(
                             [
                                 html.P('Confidence:'),
                                 dcc.Slider(id='confidence', min=1, max=3, step=None, value=2,
                                            marks={1: 'Unsure', 2: 'OK', 3: 'Gonna Win!'})
                             ],
-                            style={'width': '49%', 'display': 'inline-block'}
+                            style={'width': '40%', 'display': 'inline-block'}
                         ),
-
-                        html.Button('Enter Trade', id='button',
-                                    style={'display': 'inline-block'})
+                        html.Div(
+                            [
+                                html.P('Direction:'),
+                                dcc.RadioItems(id='direction', options=directions, value='',
+                                               style={'display': 'flex'})
+                            ],
+                            style={'width': '25%', 'display': 'inline-block'}
+                        ),
+                        html.Div(
+                            [
+                                html.Button('Enter Trade', id='button')
+                            ],
+                            style={'width': '15%', 'display': 'inline-block'}
+                        )
                     ],
                     className="pretty_container twelve columns",
+                    #style={'display': 'flex'},
                     id="enter-trade"
                 ),
                 # CONTAINER FOR OPEN POSITIONS
@@ -163,7 +168,14 @@ layout = html.Div(
         )
 
 
-@app.callback(Output('entry', 'value'), [Input('button', 'n_clicks')],
+@app.callback([Output('open_table', 'data'),
+               Output('entry', 'value'),
+               Output('size', 'value'),
+               Output('stop', 'value'),
+               Output('type', 'value'),
+               Output('direction', 'value'),
+               Output('confidence', 'value')],
+              [Input('button', 'n_clicks')],
               [State('pair', 'value'),
                State('entry', 'value'),
                State('size', 'value'),
@@ -173,33 +185,38 @@ layout = html.Div(
                State('confidence', 'value')]
               )
 def submit_trade(clicks, pair, entry, size, stop, idea, direction, confidence):
-    if clicks:
+    if clicks is None:
         pass
     elif any(x == 0 for x in [entry, size, stop]) or idea == '' or direction == '':
-        # TODO: MAKE COLOR OF BUTTON RED
-        pass
-    # TODO: Check if data of trade is complete:
-    # TODO: Change . into , for excell
+        # TODO: trade incomplete, MAKE COLOR OF BUTTON RED
+        return '#ff0000'
 
-    # Add new trade at the top of the diary excel file:
-    index = pd.DatetimeIndex([datetime.datetime.now()])
-    # trade = pd.DataFrame(columns=open_trade_dict, index=index)
-    trade = pd.DataFrame({
-        'pair': pair, 'entry': entry, 'size': size, 'stop': stop, 'type': idea, 'direction': direction,
-        'confidence':
-            confidence
-    }, index=index)
+    else:
+        # TODO: Change . into , for excell
 
-    with pd.ExcelWriter(path=diary, engine='openpyxl', datetime_format='DD-MM-YYYY hh:mm', mode='a') as \
-            writer:
-        # Open the file:
-        writer.book = load_workbook(diary)
-        # Copy existing sheets:
-        writer.sheets = dict((ws.title, ws) for ws in writer.book.worksheets)
-        # Add new trade on top of the existing data:
-        sheet = 'open'
-        writer.book[sheet].insert_rows(2)
-        trade.to_excel(writer, sheet_name=sheet, startrow=1, header=None, index_label='date')
-        writer.close()
+        # Add new trade at the top of the diary excel file:
+        index = pd.DatetimeIndex([datetime.datetime.now()])
+        # trade = pd.DataFrame(columns=open_trade_dict, index=index)
+        trade = pd.DataFrame({
+            'pair': pair, 'entry': entry, 'size': size, 'stop': stop, 'type': idea, 'direction': direction,
+            'confidence':
+                confidence
+        }, index=index)
 
-    return 0
+        with pd.ExcelWriter(path=diary, engine='openpyxl', datetime_format='DD-MM-YYYY hh:mm', mode='a') as \
+                writer:
+            # Open the file:
+            writer.book = load_workbook(diary)
+            # Copy existing sheets:
+            writer.sheets = dict((ws.title, ws) for ws in writer.book.worksheets)
+            # Add new trade on top of the existing data:
+            sheet = 'open'
+            writer.book[sheet].insert_rows(2)
+            trade.to_excel(writer, sheet_name=sheet, startrow=1, header=None, index_label='date')
+            writer.close()
+
+        # TODO: Reset input values:
+        # TODO: Animate button for visual confirmation
+        # TODO: Update table data
+        open_trades = get_open_trades(diary)
+        return open_trades, 0, 0, 0, '', '', 2

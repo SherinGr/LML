@@ -5,8 +5,8 @@ import dash_html_components as html
 from app import app
 from app import diary
 
-closed_trade_cols = ['pair', 'size', 'entry', 'exit', 'stop', 'P/L (USDT)', 'P/L (%)', 'pre capital',
-                     'risk', 'rrr', 'direction', 'type', 'confidence', 'note']
+closed_trade_cols = ['pair', 'size', 'entry', 'exit', 'stop', 'P/L (%)',
+                     'risk (%)', 'RRR', 'direction', 'type', 'confidence', 'note']
 closed_trade_dict = [{'name': c, 'id': c} for c in closed_trade_cols]
 
 
