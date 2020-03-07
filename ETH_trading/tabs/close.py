@@ -18,6 +18,9 @@ def get_closed_trades(record_file):
     return table_data
 
 
+# TODO: Update capital on each trade that is closed, save in df.
+# TODO: Save latest capital for each day in a separate df
+
 layout = html.Div(
             [
                 html.H6('Closed Trades:'),

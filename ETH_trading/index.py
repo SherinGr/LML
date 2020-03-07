@@ -12,7 +12,7 @@ from dash.dependencies import Input, Output
 
 from app import app
 from app import diary
-from tabs import open, close
+from tabs import open, close, performance
 
 colors = {
     'background': '#313e5c',
@@ -49,8 +49,8 @@ def render_content(tab):
         # RECORD OF OLD TRADES:
         return close.layout
     elif tab == 'perf':
-        # PERFORMANCE OF CAPITAL
-        return html.H1('Performance')
+        # PERFORMANCE OF CAPITAL:
+        return performance.layout
     else:
         raise NameError('Tab with name "' + tab + '" does not exist')
 

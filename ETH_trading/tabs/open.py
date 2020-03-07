@@ -68,7 +68,7 @@ layout = html.Div(
                             [
                                 html.P('Entry:'),
                                 dcc.Input(id='entry', placeholder=0.0, type='number', value=np.nan, min=0,
-                                          style={'width': '90%'})
+                                          style={'width': '90%', 'display': 'inline'})
                             ],
                             style={'width': '15%', 'display': 'inline-block'}
                         ),
