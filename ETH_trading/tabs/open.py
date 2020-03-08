@@ -165,7 +165,7 @@ layout = html.Div(
                                 columns=open_trade_dict,
                                 data=open_trades(diary, dict_output=True),
                                 style_table={
-                                    'height': '100px',
+                                    'height': '126px',
                                     'overflow-y': 'scroll'
                                 },
                                 # You can use style conditional to color profitable and losing trades!
@@ -256,8 +256,8 @@ layout = html.Div(
                             #   4. Button to calculate
 
                         ],
-                        className="pretty_container five columns",
-                        style={'display': 'inline', 'margin-right': '0'},
+                        className="pretty_container four columns",
+                        style={'display': 'inline', 'margin-right': '0', 'margin-left': '0', 'margin-top': '0'},
                         id="calculate_size"
                     )
                 ])
