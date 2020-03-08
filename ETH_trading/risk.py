@@ -1,7 +1,9 @@
 import pandas as pd
 import numpy as np
 
-from app import diary
+import cryptowatch as cw
+
+from app import user_data, client
 
 max_trade_risk = 0.01
 max_open_risk = 0.05
@@ -60,5 +62,9 @@ def trade_risk(cap, trades):
 
 
 def open_profit(trades):
-    # GET current pair prices from BINANCE
-    return 1
+    # FOR ALL TRADES FIND THE RIGHT SYMBOL AND CALCULATE THE OPEN PROFIT:
+
+    ticker = client.get_symbol_ticker(symbol='ETHUSDT')
+    current_price = ticker['price']
+
+    return -1

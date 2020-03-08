@@ -10,12 +10,13 @@ import dash_html_components as html
 
 from dash.dependencies import Input, Output, State
 
-from app import app
-from app import diary
-
 import risk
 
-current_capital = 1000  # HARDCODED FOR NOW:
+from app import app, user_data, client
+
+diary = user_data['diary_file']
+current_capital = user_data['capital'] # TODO: make this dynamic inside the functions that use it
+# current_capital = 1000  # HARDCODED FOR NOW:
 
 
 """ Dictionaries for dropdowns etc """
@@ -29,7 +30,7 @@ pairs = [
 types = [
     {'label': 'pullback to value', 'value': 'pullback to value'},
     {'label': 'ATR extreme', 'value': 'ATR extreme'},
-    {'label': 'price rejection', 'value': 'price rejection'}  # support/resistance
+    {'label': 'price rejection', 'value': 'price rejection'}
 ]
 
 directions = [
