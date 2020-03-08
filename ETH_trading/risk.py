@@ -1,52 +1,64 @@
-# This file contains some functions to perform risk management:
+import pandas as pd
+import numpy as np
+
+from app import diary
 
 max_trade_risk = 0.01
 max_open_risk = 0.05
 commission = 0.001
 
-
-def trade_risk(capital, size, high, low):
-    loss = size*abs(high/(1-commission) - low*(1-commission))
-    risk = loss/capital
-    return risk
+leverage_factor = 5  # this is either 5 or 3 on BINANCE
 
 
-def find_position_size(cap, high, low, direction):
-    # VALID FOR BOTH LONG AND SHORT TRADES:
-    # high is the high price of the trade (entry for LONG, stoploss for SHORT)
-    # low is the low price of the trade (entry for SHORT, stoploss for LONG)
+""" Functions to do calculations """
+
+
+def position_size(cap, buy, stop, leverage=False):
+    """ Calculate the allowed position size
+
+    Note: Works for both SHORT and LONG trades. Be careful to use the right input order!
+
+    If user chooses to trade with leverage, position size is limited to 5x capital
+    """
+
+    high = max(buy, stop)
+    low = min(buy, stop)
+
     max_cap_risk = cap*max_trade_risk
     true_size = max_cap_risk/abs(high/(1-commission) - low*(1-commission))
 
-    if direction == 'long':
+    if buy > stop:
+        # Max size for long trade:
         max_size = cap/high
-    elif direction == 'short':
+    else:
+        # Max size for short:
         max_size = cap/low
+
+    if leverage:
+        max_size = max_size*leverage_factor
 
     return min(true_size, max_size)
 
 
-def get_open_risk():
-    pass
-    # look at all open trades and calculate open risk
+def trade_risk(cap, trades):
+    """ Calculate the risk (%) of (an array of) open trades
+
+    INPUT: cap is the current capital, trades is a df with !open! trades
+    """
+
+    buy = trades['buy'].to_numpy()
+    size = trades['size'].to_numpy()
+    stop = trades['stop'].to_numpy()
+
+    high = np.maximum(buy, stop)
+    low = np.minimum(buy, stop)
+
+    loss = size*abs(high/(1-commission) - low*(1-commission))
+    risk = loss/cap*100
+
+    return risk
 
 
-if __name__ == '__main__':
-    # LONG:
-    entry = 239.18
-    stoploss = 231.10
-    capital = 100
-
-    size = find_position_size(capital, entry, stoploss, direction='long')
-    loss = entry*size - stoploss*size*(1-commission)**2
-    risk = trade_risk(capital, size, entry, stoploss)
-
-    # SHORT:
-    entry = 239.18
-    stoploss = 248.25
-    capital = 100
-
-    size2 = find_position_size(capital, stoploss, entry, direction='short')
-    loss2 = size2*stoploss/(1-commission) - entry*size2*(1 - commission)
-    risk2 = trade_risk(capital, size2, stoploss, entry)
-
+def open_profit(trades):
+    # GET current pair prices from BINANCE
+    return 1

@@ -253,6 +253,11 @@ p {
   margin-top: 0;
 }
 
+pre {
+  font-family: Dosis;
+  margin-top: 0;
+}
+
 /* Blockquotes
 –––––––––––––––––––––––––––––––––––––––––––––––––– */
 blockquote {

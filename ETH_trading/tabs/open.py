@@ -13,8 +13,13 @@ from dash.dependencies import Input, Output, State
 from app import app
 from app import diary
 
+import risk
 
-# DICTIONARIES FOR DROPDOWNS AND RABIO BUTTONS ETC.:
+current_capital = 1000  # HARDCODED FOR NOW:
+
+
+""" Dictionaries for dropdowns etc """
+
 pairs = [
     {'label': 'ETH/USDT', 'value': 'ETHUSDT'},
     {'label': 'BTC/USDT', 'value': 'BTCUSDT'},
@@ -32,19 +37,42 @@ directions = [
     {'label': 'SHORT', 'value': 'SHORT'}
 ]
 
-# TABLE LABELS FOR OPEN AND CLOSED TRADES:
-open_trade_cols = ['pair', 'size', 'entry', 'stop', 'direction']
+open_trade_cols = ['pair', 'size', 'buy', 'stop', 'direction']
 open_trade_dict = [{'name': c, 'id': c} for c in open_trade_cols]
 
 
-""" Functions to read trades from the records """
+""" Functions """
 
 
-def get_open_trades(record_file):
-    open_trades = pd.read_excel(record_file, sheet_name='open')
-    open_trades = open_trades.drop(columns=['date'])
-    table_data = open_trades.to_dict(orient='records')
-    return table_data
+def open_trades(record_file, dict_output=False):
+    trades = pd.read_excel(record_file, sheet_name='open')
+    trades = trades.drop(columns=['date'])
+    if dict_output:
+        # For using this function in a dash table we need a dict as output:
+        trades = trades.to_dict(orient='records')
+    return trades
+
+
+def open_risk_string():
+    open_risk = sum(risk.trade_risk(current_capital, open_trades(diary)))
+
+    if open_risk > risk.max_open_risk:
+        color = 'red'
+    else:
+        color = 'green'
+
+    return [html.Pre('Open risk is: \t'),
+            html.P(' {:.2f}%'.format(open_risk), style={'color': color})]
+
+
+def open_profit_string():
+    profit = risk.open_profit(open_trades(diary))
+    if profit < 0:
+        color = 'red'
+    else:
+        color = 'green'
+    return [html.Pre('Open profit/loss is: \t '),
+            html.P('{:.2f}$'.format(profit), style={'color': color})]
 
 
 """ The actual tab """
@@ -55,73 +83,76 @@ layout = html.Div(
                 # CONTAINER FOR ENTERING A NEW TRADE
                 html.Div(
                     [
-                        html.H6('Add new trade:'),
+                        html.H6('Add New Trade:'),
                         html.Div(
                             [
                                 html.P('Pair:'),
                                 dcc.Dropdown(id='pair', options=pairs, value='ETHUSDT',
-                                             style={'width': '97%', 'display': 'block'}),
+                                             style={'width': '97%', 'display': 'block', 'height': '40px'}),
                             ],
                             style={'width': '25%', 'display': 'inline-block'}
                         ),
                         html.Div(
                             [
-                                html.P('Entry:'),
-                                dcc.Input(id='entry', placeholder=0.0, type='number', value=np.nan, min=0,
-                                          style={'width': '90%', 'display': 'inline'})
+                                html.P('Buy:'),
+                                dcc.Input(id='buy', placeholder=0.0, type='number', value=np.nan, min=0,
+                                          style={'width': '90%', 'display': 'inline', 'height': '40px'})
                             ],
-                            style={'width': '15%', 'display': 'inline-block'}
+                            style={'width': '15%', 'display': 'inline-block', 'vertical-align': 'top'}
                         ),
                         html.Div(
                             [
                                 html.P('Amount:'),
                                 dcc.Input(id='size', placeholder=0.0, type='number', value=np.nan, min=0,
-                                          style={'width': '90%'})
+                                          style={'width': '90%', 'height': '40px'})
                             ],
-                            style={'width': '15%', 'display': 'inline-block'}
+                            style={'width': '15%', 'display': 'inline-block', 'vertical-align': 'top'}
                         ),
                         html.Div(
                             [
                                 html.P('Stop loss:'),
                                 dcc.Input(id='stop', placeholder=0.0, type='number', value=np.nan, min=0,
-                                          style={'width': '90%'})
+                                          style={'width': '90%', 'height': '40px'})
                             ],
-                            style={'width': '15%', 'display': 'inline-block'}
+                            style={'width': '15%', 'display': 'inline-block', 'vertical-align': 'top'}
                         ),
                         html.Div(
                             [
                                 html.P('Trade type:'),
                                 dcc.Dropdown(id='type', options=types, value='',
-                                             style={'width': '100%', 'display': 'block'})
+                                             style={'width': '100%', 'display': 'block', 'height': '40px'})
                             ],
                             style={'width': '30%', 'display': 'inline-block'},
                         ),
-
                         html.Div(
                             [
-                                html.P('Confidence:'),
-                                dcc.Slider(id='confidence', min=1, max=3, step=None, value=2,
-                                           marks={1: 'Unsure', 2: 'OK', 3: 'Gonna Win!'})
+                                html.Div(
+                                    [
+                                        html.P('Confidence:'),
+                                        dcc.Slider(id='confidence', min=1, max=3, step=None, value=2,
+                                                   marks={1: 'Unsure', 2: 'OK', 3: 'Gonna Win!'})
+                                    ],
+                                    style={'width': '40%', 'display': 'block-inline', 'vertical-align': 'top'}
+                                ),
+                                html.Div(
+                                    [
+                                        html.P('Direction:'),
+                                        dcc.RadioItems(id='direction', options=directions, value='',
+                                                       style={'display': 'flex'})
+                                    ],
+                                    style={'display': 'block-inline'}
+                                ),
+                                html.Div(
+                                    [
+                                        html.Button('Enter Trade', id='button')
+                                    ],
+                                    style={'display': 'block', 'vertical-align': 'bottom'}
+                                )
                             ],
-                            style={'width': '40%', 'display': 'inline-block'}
-                        ),
-                        html.Div(
-                            [
-                                html.P('Direction:'),
-                                dcc.RadioItems(id='direction', options=directions, value='',
-                                               style={'display': 'flex'})
-                            ],
-                            style={'width': '25%', 'display': 'inline-block'}
-                        ),
-                        html.Div(
-                            [
-                                html.Button('Enter Trade', id='button')
-                            ],
-                            style={'width': '15%', 'display': 'inline-block'}
+                            style={'justify-content': 'space-between', 'display': 'flex'}
                         )
                     ],
                     className="pretty_container twelve columns",
-                    #style={'display': 'flex'},
                     id="enter-trade"
                 ),
                 # CONTAINER FOR OPEN POSITIONS
@@ -132,7 +163,7 @@ layout = html.Div(
                             dash_table.DataTable(
                                 id='open_table',
                                 columns=open_trade_dict,
-                                data=get_open_trades(diary),
+                                data=open_trades(diary, dict_output=True),
                                 style_table={
                                     'height': '100px',
                                     'overflow-y': 'scroll'
@@ -147,21 +178,87 @@ layout = html.Div(
                                 style_as_list_view=True,
                                 style_cell={'padding': '5px'},
                                 style_header={'background-color': 'white', 'font-weight': 'bold'}
+                            ),
+                            html.Div(
+                                [
+                                    html.Div(children=open_risk_string(),
+                                             style={'display': 'flex'}),
+                                    html.Div(children=open_profit_string(),
+                                             style={'display': 'flex'})
+                                ],
+                                style={'justify-content': 'space-between', 'display': 'flex'}
                             )
                         ],
                         className="pretty_container seven columns",
                         style={'display': 'inline-block', 'margin-left': '0', 'margin-top': '0'},
                         id="open-positions"
                     ),
-                    # CONTAINER FOR CLOSING AN OPEN POSITION
+                    # CONTAINER FOR CALCULATING TRADE SIZE
                     html.Div(
                         [
-                            html.H6('CLOSE AN OPEN POSITION, OR MAYBE OPEN RISK AND OPEN P/L?')
+                            html.H6('Calculate Position Size:'),
+                            html.Div(
+                                [
+                                    html.Div(
+                                        [
+                                            html.P('Buy:'),
+                                            dcc.Input(id='buy2', placeholder=0.0, type='number', value=np.nan, min=0,
+                                                      style={'display': 'inline', 'width': '90%'})
+                                        ],
+                                        #  style={'display': 'inline-block'}
+                                    ),
+                                    html.Div(
+                                        [
+                                            html.P('Stop loss:'),
+                                            dcc.Input(id='stop2', placeholder=0.0, type='number', value=np.nan, min=0,
+                                                      style={'display': 'inline', 'width': '90%', })
+                                        ],
+                                        style={'display': 'inline-block'}
+                                    ),
+                                    html.Div(
+                                        [
+                                            html.P('Allowed size:', style={'display': 'block'}),
+                                            dcc.Input(id='size2', placeholder=0.0, type='number', value=np.nan, min=0,
+                                                      style={'display': 'inline', 'width': '90%'})
+                                        ],
+                                        style={'display': 'inline-block'}
+                                    ),
+                                ],
+                                style={'justify-content': 'space-between', 'display': 'flex'}
+                            ),
+                            html.Div(
+                                [
+                                    html.Div(
+                                        [
+                                            html.P('Risk:'),
+                                            dcc.RadioItems(id='risk', options=[{'label': '1%', 'value': 0.01},
+                                                                               {'label': '2%', 'value': 0.02}],
+                                                           value=0.01,
+                                                           style={'display': 'flex'})
+                                        ],
+                                        style={'display': 'flex'}
+                                    ),
+                                    html.Div(
+                                        [
+                                            html.P('Use Leverage:'),
+                                            dcc.RadioItems(id='leverage', options=[{'label': 'No', 'value': 1},
+                                                                                   {'label': 'Yes', 'value': 5}],
+                                                           value=0.01,
+                                                           style={'display': 'flex'})
+                                        ],
+                                        style={'display': 'flex'}
+                                    ),
+
+                                ], style={'display': 'inline'}
+                            )
+                            # TODO:
+                            #   1. Layout
+                            #   4. Button to calculate
 
                         ],
-                        className="pretty_container",
-                        style={'display': 'flex', 'margin-right': '0'},
-                        id="close-position"
+                        className="pretty_container five columns",
+                        style={'display': 'inline', 'margin-right': '0'},
+                        id="calculate_size"
                     )
                 ])
             ]
@@ -169,7 +266,7 @@ layout = html.Div(
 
 
 @app.callback([Output('open_table', 'data'),
-               Output('entry', 'value'),
+               Output('buy', 'value'),
                Output('size', 'value'),
                Output('stop', 'value'),
                Output('type', 'value'),
@@ -177,28 +274,25 @@ layout = html.Div(
                Output('confidence', 'value')],
               [Input('button', 'n_clicks')],
               [State('pair', 'value'),
-               State('entry', 'value'),
+               State('buy', 'value'),
                State('size', 'value'),
                State('stop', 'value'),
                State('type', 'value'),
                State('direction', 'value'),
                State('confidence', 'value')]
               )
-def submit_trade(clicks, pair, entry, size, stop, idea, direction, confidence):
+def submit_trade(clicks, pair, buy, size, stop, idea, direction, confidence):
     if clicks is None:
         pass
-    elif any(x == 0 for x in [entry, size, stop]) or idea == '' or direction == '':
-        # TODO: trade incomplete, MAKE COLOR OF BUTTON RED
+    elif any(x == 0 for x in [buy, size, stop]) or idea == '' or direction == '':
+        # TODO: trade incomplete, MAKE COLOR OF MISSING BOX RED
         return '#ff0000'
-
     else:
-        # TODO: Change . into , for excell
-
         # Add new trade at the top of the diary excel file:
         index = pd.DatetimeIndex([datetime.datetime.now()])
         # trade = pd.DataFrame(columns=open_trade_dict, index=index)
         trade = pd.DataFrame({
-            'pair': pair, 'entry': entry, 'size': size, 'stop': stop, 'type': idea, 'direction': direction,
+            'pair': pair, 'buy': buy, 'size': size, 'stop': stop, 'type': idea, 'direction': direction,
             'confidence':
                 confidence
         }, index=index)
@@ -215,8 +309,6 @@ def submit_trade(clicks, pair, entry, size, stop, idea, direction, confidence):
             trade.to_excel(writer, sheet_name=sheet, startrow=1, header=None, index_label='date')
             writer.close()
 
-        # TODO: Reset input values:
         # TODO: Animate button for visual confirmation
-        # TODO: Update table data
-        open_trades = get_open_trades(diary)
-        return open_trades, 0, 0, 0, '', '', 2
+        trades = open_trades(diary)
+        return trades, 0, 0, 0, '', '', 2

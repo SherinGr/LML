@@ -6,12 +6,12 @@ app.config.suppress_callback_exceptions = True
 
 diary = 'diary.xlsx'
 
-d = shelve.open('user_profile', writeback=True)
+# d = shelve.open('user_profile', writeback=True)
 
 # TODO: write a file that initializes these variables for one time use
 
-capital_df = d['capital']
-capital = capital_df.tail(1).value()
+# capital_df = d['capital']
+# capital = capital_df.tail(1).value()
 
 
-d.close()
+# d.close()
