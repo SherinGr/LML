@@ -15,9 +15,6 @@ import risk
 from app import app, user_data, client
 
 diary = user_data['diary_file']
-current_capital = user_data['capital'] # TODO: make this dynamic inside the functions that use it
-# current_capital = 1000  # HARDCODED FOR NOW:
-
 
 """ Dictionaries for dropdowns etc """
 
@@ -38,7 +35,7 @@ directions = [
     {'label': 'SHORT', 'value': 'SHORT'}
 ]
 
-open_trade_cols = ['pair', 'size', 'buy', 'stop', 'direction']
+open_trade_cols = ['pair', 'size', 'entry', 'stop', 'direction']
 open_trade_dict = [{'name': c, 'id': c} for c in open_trade_cols]
 
 
@@ -55,6 +52,7 @@ def open_trades(record_file, dict_output=False):
 
 
 def open_risk_string():
+    current_capital = user_data['capital']
     open_risk = sum(risk.trade_risk(current_capital, open_trades(diary)))
 
     if open_risk > risk.max_open_risk:
@@ -62,7 +60,7 @@ def open_risk_string():
     else:
         color = 'green'
 
-    return [html.Pre('Open risk is: \t'),
+    return [html.Pre('Open risk: \t'),
             html.P(' {:.2f}%'.format(open_risk), style={'color': color})]
 
 
@@ -72,7 +70,7 @@ def open_profit_string():
         color = 'red'
     else:
         color = 'green'
-    return [html.Pre('Open profit/loss is: \t '),
+    return [html.Pre('Open profit/loss: \t '),
             html.P('{:.2f}$'.format(profit), style={'color': color})]
 
 
@@ -82,6 +80,7 @@ def open_profit_string():
 layout = html.Div(
             [
                 # CONTAINER FOR ENTERING A NEW TRADE
+                html.Div([
                 html.Div(
                     [
                         html.H6('Add New Trade:'),
@@ -95,16 +94,16 @@ layout = html.Div(
                         ),
                         html.Div(
                             [
-                                html.P('Buy:'),
-                                dcc.Input(id='buy', placeholder=0.0, type='number', value=np.nan, min=0,
+                                html.P('Amount:'),
+                                dcc.Input(id='size', placeholder=0.0, type='number', value=np.nan, min=0,
                                           style={'width': '90%', 'display': 'inline', 'height': '40px'})
                             ],
                             style={'width': '15%', 'display': 'inline-block', 'vertical-align': 'top'}
                         ),
                         html.Div(
                             [
-                                html.P('Amount:'),
-                                dcc.Input(id='size', placeholder=0.0, type='number', value=np.nan, min=0,
+                                html.P('Entry:'),
+                                dcc.Input(id='entry', placeholder=0.0, type='number', value=np.nan, min=0,
                                           style={'width': '90%', 'height': '40px'})
                             ],
                             style={'width': '15%', 'display': 'inline-block', 'vertical-align': 'top'}
@@ -137,9 +136,13 @@ layout = html.Div(
                                 ),
                                 html.Div(
                                     [
+                                        # TODO: Remove this, extend slider to five options.
+                                        #   Add functionality in callback to determine short or long
                                         html.P('Direction:'),
                                         dcc.RadioItems(id='direction', options=directions, value='',
-                                                       style={'display': 'flex'})
+                                                       style={'display': 'flex', 'margin-top': '10px',
+                                                              'margin-bottom': '0'},
+                                                       labelStyle={'margin-right': '10px'})
                                     ],
                                     style={'display': 'block-inline'}
                                 ),
@@ -147,20 +150,24 @@ layout = html.Div(
                                     [
                                         html.Button('Enter Trade', id='button')
                                     ],
-                                    style={'display': 'block', 'vertical-align': 'bottom'}
+                                    style={'display': 'block', 'align-items': 'flex-end', 'margin-top': '35px'}
                                 )
                             ],
                             style={'justify-content': 'space-between', 'display': 'flex'}
                         )
                     ],
                     className="pretty_container twelve columns",
+                    style={'margin-right': '0'},
                     id="enter-trade"
+                    ),
+                    ],
+                    className='row flex-display'
                 ),
                 # CONTAINER FOR OPEN POSITIONS
                 html.Div([
                     html.Div(
                         [
-                            html.H6('Open Positions:'),
+                            html.H6('Open Positions:', style={'margin-bottom': '10px'}),
                             dash_table.DataTable(
                                 id='open_table',
                                 columns=open_trade_dict,
@@ -187,11 +194,12 @@ layout = html.Div(
                                     html.Div(children=open_profit_string(),
                                              style={'display': 'flex'})
                                 ],
-                                style={'justify-content': 'space-between', 'display': 'flex'}
+                                style={'justify-content': 'space-between', 'display': 'flex',
+                                       'margin-top': '10px'}
                             )
                         ],
                         className="pretty_container seven columns",
-                        style={'display': 'inline-block', 'margin-left': '0', 'margin-top': '0'},
+                        style={'margin-left': '0', 'margin-top': '0'},
                         id="open-positions"
                     ),
                     # CONTAINER FOR CALCULATING TRADE SIZE
@@ -202,11 +210,11 @@ layout = html.Div(
                                 [
                                     html.Div(
                                         [
-                                            html.P('Buy:'),
-                                            dcc.Input(id='buy2', placeholder=0.0, type='number', value=np.nan, min=0,
+                                            html.P('Entry:'),
+                                            dcc.Input(id='entry2', placeholder=0.0, type='number', value=np.nan,
+                                                      min=0,
                                                       style={'display': 'inline', 'width': '90%'})
                                         ],
-                                        #  style={'display': 'inline-block'}
                                     ),
                                     html.Div(
                                         [
@@ -220,7 +228,8 @@ layout = html.Div(
                                         [
                                             html.P('Allowed size:', style={'display': 'block'}),
                                             dcc.Input(id='size2', placeholder=0.0, type='number', value=np.nan, min=0,
-                                                      style={'display': 'inline', 'width': '90%'})
+                                                      readOnly=True,
+                                                      style={'display': 'inline', 'width': '100%'})
                                         ],
                                         style={'display': 'inline-block'}
                                     ),
@@ -231,25 +240,33 @@ layout = html.Div(
                                 [
                                     html.Div(
                                         [
-                                            html.P('Risk:'),
-                                            dcc.RadioItems(id='risk', options=[{'label': '1%', 'value': 0.01},
+                                            html.Pre('Risk:'),
+                                            dcc.RadioItems(id='risk', options=[{'label': '1%  ', 'value': 0.01},
                                                                                {'label': '2%', 'value': 0.02}],
                                                            value=0.01,
-                                                           style={'display': 'flex'})
+                                                           style={'display': 'flex', 'margin-right': '2px'},
+                                                           labelStyle={'margin-right': '24px'})
                                         ],
-                                        style={'display': 'flex'}
+                                        style={'display': 'flex', 'justify-content': 'space-between',
+                                               'margin-top': '10px'}
                                     ),
                                     html.Div(
                                         [
                                             html.P('Use Leverage:'),
-                                            dcc.RadioItems(id='leverage', options=[{'label': 'No', 'value': 1},
-                                                                                   {'label': 'Yes', 'value': 5}],
-                                                           value=0.01,
-                                                           style={'display': 'flex'})
+                                            dcc.RadioItems(id='leverage', options=[{'label': 'Yes', 'value': 5},
+                                                                                   {'label': 'No', 'value': 1}],
+                                                           value=1,
+                                                           style={'display': 'flex', 'margin-right': '10px'},
+                                                           labelStyle={'margin-right': '20px'})
                                         ],
-                                        style={'display': 'flex'}
+                                        style={'display': 'flex', 'justify-content': 'space-between'}
                                     ),
-
+                                    html.Div(
+                                        [
+                                            html.Button('GO!', id='calc_size')
+                                        ],
+                                        style={'display': 'flex', 'justify-content': 'flex-end'}
+                                    )
                                 ], style={'display': 'inline'}
                             )
                             # TODO:
@@ -257,17 +274,19 @@ layout = html.Div(
                             #   4. Button to calculate
 
                         ],
-                        className="pretty_container four columns",
-                        style={'display': 'inline', 'margin-right': '0', 'margin-left': '0', 'margin-top': '0'},
+                        className="pretty_container five columns",
+                        style={'margin-right': '0', 'margin-left': '0', 'margin-top': '0'},
                         id="calculate_size"
                     )
-                ])
+                ],
+                className='row flex-display'
+                )
             ]
         )
 
 
 @app.callback([Output('open_table', 'data'),
-               Output('buy', 'value'),
+               Output('entry', 'value'),
                Output('size', 'value'),
                Output('stop', 'value'),
                Output('type', 'value'),
@@ -275,17 +294,17 @@ layout = html.Div(
                Output('confidence', 'value')],
               [Input('button', 'n_clicks')],
               [State('pair', 'value'),
-               State('buy', 'value'),
+               State('entry', 'value'),
                State('size', 'value'),
                State('stop', 'value'),
                State('type', 'value'),
                State('direction', 'value'),
                State('confidence', 'value')]
               )
-def submit_trade(clicks, pair, buy, size, stop, idea, direction, confidence):
+def submit_trade(clicks, pair, entry, size, stop, idea, direction, confidence):
     if clicks is None:
         pass
-    elif any(x == 0 for x in [buy, size, stop]) or idea == '' or direction == '':
+    elif any(x == 0 for x in [entry, size, stop]) or idea == '' or direction == '':
         # TODO: trade incomplete, MAKE COLOR OF MISSING BOX RED
         return '#ff0000'
     else:
@@ -293,7 +312,7 @@ def submit_trade(clicks, pair, buy, size, stop, idea, direction, confidence):
         index = pd.DatetimeIndex([datetime.datetime.now()])
         # trade = pd.DataFrame(columns=open_trade_dict, index=index)
         trade = pd.DataFrame({
-            'pair': pair, 'buy': buy, 'size': size, 'stop': stop, 'type': idea, 'direction': direction,
+            'pair': pair, 'size': size, 'entry': entry, 'stop': stop, 'type': idea, 'direction': direction,
             'confidence':
                 confidence
         }, index=index)

@@ -48,12 +48,12 @@ def trade_risk(cap, trades):
     INPUT: cap is the current capital, trades is a df with !open! trades
     """
 
-    buy = trades['buy'].to_numpy()
+    entry = trades['entry'].to_numpy()
     size = trades['size'].to_numpy()
     stop = trades['stop'].to_numpy()
 
-    high = np.maximum(buy, stop)
-    low = np.minimum(buy, stop)
+    high = np.maximum(entry, stop)
+    low = np.minimum(entry, stop)
 
     loss = size*abs(high/(1-commission) - low*(1-commission))
     risk = loss/cap*100

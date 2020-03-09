@@ -9,11 +9,12 @@ from tabs import open, close, performance
 
 app.layout = html.Div(
     [
+        html.Div(id="output-clientside"),
         html.H1('- TRADING WORKBOOK -',
                 style={'margin-top': '0', 'margin-bottom': '0', 'color': '#fafafa', 'text-align': 'center'}),
-        # html.H5("Good records are key to consistent profits",
-        #        style={'margin-top': '0px', 'color': colors['text'], 'text-align': 'center'}),
-        dcc.Tabs(id='app_tabs', value='open', parent_className='custom-tabs', className='custom-tabs-container',
+        html.H5("Good records are the key to consistent profits",
+               style={'margin-top': '0', 'color': '#fafafa', 'text-align': 'center'}),
+        dcc.Tabs(id='app_tabs', value='close', parent_className='custom-tabs', className='custom-tabs-container',
                  children=[
                         dcc.Tab(label='Open Trade', value='open',
                                 className='custom-tab', selected_className='custom-tab--selected'),
