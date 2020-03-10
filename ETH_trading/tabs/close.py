@@ -9,7 +9,7 @@ from app import diary
 from tabs.open import *
 
 closed_trade_cols = ['pair', 'size', 'entry', 'exit', 'stop', 'P/L (%)',
-                     'risk (%)', 'RRR', 'direction', 'type', 'confidence', 'note']
+                     'risk (%)', 'RRR', 'relative size', 'timespan', 'direction', 'type', 'confidence', 'note']
 closed_trade_dict = [{'name': c, 'id': c} for c in closed_trade_cols]
 
 
