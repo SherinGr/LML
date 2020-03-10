@@ -14,7 +14,7 @@ import risk
 
 from app import app, user_data, client
 
-diary = user_data['diary_file']
+# diary = user_data['diary_file']
 
 """ Dictionaries for dropdowns etc """
 
@@ -51,9 +51,23 @@ def open_trades(record_file, dict_output=False):
     return trades
 
 
+def write_open_trade_to_records(record_file, trade):
+    with pd.ExcelWriter(path=record_file, engine='openpyxl', datetime_format='DD-MM-YYYY hh:mm', mode='a') as \
+            writer:
+        # Open the file:
+        writer.book = load_workbook(record_file)
+        # Copy existing sheets:
+        writer.sheets = dict((ws.title, ws) for ws in writer.book.worksheets)
+        # Add new trade on top of the existing data:
+        sheet = 'open'
+        writer.book[sheet].insert_rows(2)
+        trade.to_excel(writer, sheet_name=sheet, startrow=1, header=None, index_label='date')
+        writer.close()
+
+
 def open_risk_string():
     current_capital = user_data['capital']
-    open_risk = sum(risk.trade_risk(current_capital, open_trades(diary)))
+    open_risk = sum(risk.trade_risk(current_capital, open_trades(user_data['diary_file'])))
 
     if open_risk > risk.max_open_risk:
         color = 'red'
@@ -65,13 +79,14 @@ def open_risk_string():
 
 
 def open_profit_string():
-    profit = risk.open_profit(open_trades(diary))
+    profit = risk.open_profit(open_trades(user_data['diary_file']))
+    percent = profit/user_data['capital']*100
     if profit < 0:
         color = 'red'
     else:
         color = 'green'
     return [html.Pre('Open profit/loss: \t '),
-            html.P('{:.2f}$'.format(profit), style={'color': color})]
+            html.P('{:.2f}$ ({:.2f}%)'.format(profit, percent), style={'color': color})]
 
 
 """ The actual tab """
@@ -80,6 +95,7 @@ def open_profit_string():
 layout = html.Div(
             [
                 # CONTAINER FOR ENTERING A NEW TRADE
+                dcc.Interval(id='price_call'),
                 html.Div([
                 html.Div(
                     [
@@ -148,7 +164,7 @@ layout = html.Div(
                                 ),
                                 html.Div(
                                     [
-                                        html.Button('Enter Trade', id='button')
+                                        html.Button('Enter Trade', id='enter_trade_button')
                                     ],
                                     style={'display': 'block', 'align-items': 'flex-end', 'margin-top': '35px'}
                                 )
@@ -171,7 +187,7 @@ layout = html.Div(
                             dash_table.DataTable(
                                 id='open_table',
                                 columns=open_trade_dict,
-                                data=open_trades(diary, dict_output=True),
+                                data=open_trades(user_data['diary_file'], dict_output=True),
                                 style_table={
                                     'height': '126px',
                                     'overflow-y': 'scroll'
@@ -189,10 +205,10 @@ layout = html.Div(
                             ),
                             html.Div(
                                 [
-                                    html.Div(children=open_risk_string(),
+                                    html.Div(id='open_risk', children=open_risk_string(),
                                              style={'display': 'flex'}),
-                                    html.Div(children=open_profit_string(),
-                                             style={'display': 'flex'})
+                                    html.Div(id='open_profit', children=open_profit_string(),
+                                             style={'display': 'flex', 'width': '60%'})
                                 ],
                                 style={'justify-content': 'space-between', 'display': 'flex',
                                        'margin-top': '10px'}
@@ -263,36 +279,55 @@ layout = html.Div(
                                     ),
                                     html.Div(
                                         [
-                                            html.Button('GO!', id='calc_size')
+                                            html.Button('GO!', id='calc_size_button')
                                         ],
                                         style={'display': 'flex', 'justify-content': 'flex-end'}
                                     )
                                 ], style={'display': 'inline'}
                             )
-                            # TODO:
-                            #   1. Layout
-                            #   4. Button to calculate
-
                         ],
                         className="pretty_container five columns",
                         style={'margin-right': '0', 'margin-left': '0', 'margin-top': '0'},
                         id="calculate_size"
                     )
-                ],
-                className='row flex-display'
+                    ],
+                    className='row flex-display'
                 )
             ]
         )
 
+# Callback for continuous update of open profit:
+@app.callback(Output('open_profit', 'children'), [Input('price_call', 'n_intervals')])
+def update_profit(_):
+    return open_profit_string()
 
+
+# Callback for calculate trade size button:
+@app.callback(Output('size2', 'value'),
+              [Input('calc_size_button', 'n_clicks')],
+              [State('entry2', 'value'),
+               State('stop2', 'value'),
+               State('risk', 'value'),
+               State('leverage', 'value')])
+def calculate_size(clicks, entry, stop, max_risk, leverage):
+    if clicks is None:
+        pass
+    else:
+        cap = user_data['capital']
+        return round(risk.position_size(cap, entry, stop, max_risk, leverage), 4)
+
+
+# Callback for enter trade button:
+# TODO: Handle error when input is not complete yet
 @app.callback([Output('open_table', 'data'),
                Output('entry', 'value'),
                Output('size', 'value'),
                Output('stop', 'value'),
                Output('type', 'value'),
                Output('direction', 'value'),
-               Output('confidence', 'value')],
-              [Input('button', 'n_clicks')],
+               Output('confidence', 'value'),
+               Output('open_risk', 'children')],
+              [Input('enter_trade_button', 'n_clicks')],
               [State('pair', 'value'),
                State('entry', 'value'),
                State('size', 'value'),
@@ -305,30 +340,17 @@ def submit_trade(clicks, pair, entry, size, stop, idea, direction, confidence):
     if clicks is None:
         pass
     elif any(x == 0 for x in [entry, size, stop]) or idea == '' or direction == '':
-        # TODO: trade incomplete, MAKE COLOR OF MISSING BOX RED
-        return '#ff0000'
+        return 0
     else:
         # Add new trade at the top of the diary excel file:
         index = pd.DatetimeIndex([datetime.datetime.now()])
-        # trade = pd.DataFrame(columns=open_trade_dict, index=index)
         trade = pd.DataFrame({
             'pair': pair, 'size': size, 'entry': entry, 'stop': stop, 'type': idea, 'direction': direction,
             'confidence':
                 confidence
         }, index=index)
 
-        with pd.ExcelWriter(path=diary, engine='openpyxl', datetime_format='DD-MM-YYYY hh:mm', mode='a') as \
-                writer:
-            # Open the file:
-            writer.book = load_workbook(diary)
-            # Copy existing sheets:
-            writer.sheets = dict((ws.title, ws) for ws in writer.book.worksheets)
-            # Add new trade on top of the existing data:
-            sheet = 'open'
-            writer.book[sheet].insert_rows(2)
-            trade.to_excel(writer, sheet_name=sheet, startrow=1, header=None, index_label='date')
-            writer.close()
+        write_open_trade_to_records(user_data['diary_file'], trade)
+        trades = open_trades(user_data['diary_file'], dict_output=True)
 
-        # TODO: Animate button for visual confirmation
-        trades = open_trades(diary)
-        return trades, 0, 0, 0, '', '', 2
+        return trades, 0, 0, 0, '', '', 2, open_risk_string()

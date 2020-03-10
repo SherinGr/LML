@@ -13,12 +13,19 @@ closed_trade_cols = ['pair', 'size', 'entry', 'exit', 'stop', 'P/L (%)',
 closed_trade_dict = [{'name': c, 'id': c} for c in closed_trade_cols]
 
 
-def get_closed_trades(record_file):
-    closed_trades = pd.read_excel(record_file, sheet_name='closed')
-    # closed_trades = closed_trades.drop(columns=['date'])
-    # TODO: make sure to drop the right columns here to match the table dict!
-    table_data = closed_trades.to_dict(orient='records')
+def closed_trades(record_file):
+    trades = pd.read_excel(record_file, sheet_name='closed')
+    trades = trades.drop(columns=['date'])
+    table_data = trades.to_dict(orient='records')
     return table_data
+
+
+def write_closed_trade_to_records(trade):
+    # TODO:
+    #   1. Write trade to closed sheet
+    #   2. remove trade from open sheet
+    pass
+
 
 
 # TODO: Update capital on each trade that is closed, save in df.
@@ -31,9 +38,9 @@ layout = html.Div(
             [
                 html.Div(
                     [
-                        html.H6('Open Positions:', style={'margin-bottom': '10px'}),
+                        html.H6('Select A Position To Close:', style={'margin-bottom': '10px'}),
                         dash_table.DataTable(
-                            id='open_table',
+                            id='open_table2',
                             columns=open_trade_dict,
                             data=open_trades(diary, dict_output=True),
                             style_table={
@@ -53,18 +60,26 @@ layout = html.Div(
                             style_header={'background-color': 'white', 'font-weight': 'bold'}
                         )
                     ],
-                    className='pretty_container seven columns',
+                    className='pretty_container six columns',
                     style={'margin-left': '0'}
                 ),
                 html.Div(
                     [
-                        html.H6('Close Position:'),
-                        html.P('Exit:'),
-                        dcc.Input(id='exit'),
-                        html.P('Note:'),
-                        dcc.Input(id='note')
+                        html.H6('Close Position:', style={'margin-bottom': '20px'}),
+                        html.Div(
+                            [
+                                html.P('Exit price:'),
+                                dcc.Input(id='exit', placeholder=0, type='number', min=0,
+                                          style={'width': '20%'}),
+                                html.Button('Close Trade', id='close_trade_button')
+                            ],
+                            style={'display': 'flex', 'justify-content': 'space-between',
+                                   'vertical-align': 'center'}
+                        ),
+                        html.P('Note:', style={'margin-top': '10px'}),
+                        dcc.Input(id='note', style={'width': '100%'})
                     ],
-                    className='pretty_container five columns',
+                    className='pretty_container six columns',
                     style={'margin-right': '0', 'margin-left': '0'}
                 )
             ],
@@ -76,7 +91,7 @@ layout = html.Div(
                 dash_table.DataTable(
                     id='closed_table',
                     columns=closed_trade_dict,
-                    data=get_closed_trades(diary),
+                    data=closed_trades(diary),
                     style_table={
                       'height': '250px',
                       'overflow-y': 'scroll'
@@ -99,3 +114,28 @@ layout = html.Div(
 
     ],
 )
+
+
+# @app.callback(Output('selected_trade', 'children'),
+#               [Input('open_table2', 'rows'),
+#                Input('open_table2', 'selected_row_indices')])
+# def open_trade_selected(rows, selected_row):
+#     # TODO:
+#     #   1. retrieve the selected trade
+#     #   2. Show it in the close trade table
+#
+#     pass
+
+
+@app.callback(Output('closed_table', 'data'),
+              [Input('close_trade_button', 'n_clicks')],
+              [State('exit', 'value'),
+               State('note', 'value')])
+def close_trade(clicks, exit, note):
+    # TODO:
+    #   1. calculate values on closing a trade
+    #   1b. Update per_trade_capital dataframe!!!
+    #   2. add to diary, remove from open
+    #   3. display in table
+
+    pass
