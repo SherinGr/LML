@@ -1,6 +1,9 @@
 import dash_core_components as dcc
 import dash_html_components as html
 
+from app import app
+
+
 layout = html.Div(
     [
         html.Div(
@@ -18,7 +21,7 @@ layout = html.Div(
                             [
                                 html.Div(
                                     [
-                                        html.H6(id='no_trades'),
+                                        html.H6(str()),
                                         html.P('No. Trades')
                                     ],
                                     className='mini_container',

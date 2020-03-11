@@ -2,9 +2,11 @@ import pandas as pd
 import dash_table
 import dash_html_components as html
 import dash_core_components as dcc
+from dash.dependencies import Input, Output, State
 
 from app import app, user_data
-from tabs.open import *
+
+import tabs.open as opentab
 
 closed_trade_cols = ['pair', 'size', 'entry', 'stop', 'exit', 'P/L (%)',
                      'risk (%)', 'RRR', 'cap. share (%)', 'timespan', 'direction', 'type', 'confidence', 'note']
@@ -18,19 +20,11 @@ def closed_trades(record_file):
     return table_data
 
 
-def get_trade_features(trade):
-    pass
-
-
 def write_closed_trade_to_records(trade):
     # TODO:
     #   1. Write trade to closed sheet
     #   2. remove trade from open sheet
     pass
-
-
-# TODO: Update capital on each trade that is closed, save in df.
-# TODO: Save latest capital for each day in a separate df
 
 
 layout = html.Div(
@@ -42,8 +36,8 @@ layout = html.Div(
                         html.H6('Select A Position To Close:', style={'margin-bottom': '10px'}),
                         dash_table.DataTable(
                             id='open_table2',
-                            columns=open_trade_dict,
-                            data=open_trades(user_data['diary_file'], dict_output=True),
+                            columns=opentab.open_trade_dict,
+                            data=opentab.open_trades(user_data['diary_file'], dict_output=True),
                             style_table={
                                 'height': '126px',
                                 'overflow-y': 'scroll',

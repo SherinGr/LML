@@ -1,10 +1,13 @@
 import pandas as pd
 import numpy as np
 import shelve
+import datetime
 
-import cryptowatch as cw
+#import cryptowatch as cw
 
-from app import user_data, client
+from app import client  #, user_data
+
+import tabs.close as closetab
 
 max_open_risk = 0.05
 commission = 0.001
@@ -75,45 +78,44 @@ def open_profit(trades):
     return sum(open_value)
 
 
-def profit_abs(entry, exit, qty, direction):
+def profit_abs(entry, close, qty, direction):
     if direction == 'SHORT':
-        return qty*(entry*(1-commission) - exit*(1+commission))
+        return qty*(entry*(1-commission) - close*(1+commission))
     elif direction == 'LONG':
-        return qty*(exit*(1-commission)**2 - entry)
+        return qty*(close*(1-commission)**2 - entry)
     else:
         raise NameError('I do not recognize the trade direction "' + direction + '"')
 
 
-def profit_rel(entry, exit, qty, direction):
+def profit_rel(entry, close, qty, direction):
     cap = user_data['capital'][-1]
-    p_abs = profit_abs(entry, exit, qty, direction)
+    p_abs = profit_abs(entry, close, qty, direction)
     p_rel = p_abs/cap*100
     return p_rel
 
 
-def risk_reward_ratio(entry, stop, exit):
-    return abs((exit-entry)/(entry-stop))
+def risk_reward_ratio(entry, stop, close):
+    if close == stop:
+        return 0
+    else:
+        return abs((close-entry)/(entry-stop))
 
 
-def update_expectancy():
-    pass
-
-
-def update_shelf(entry, new_point):
+def update_shelf(varname, new_data):
     # TODO: May not be necessary to open and close the shelve in these functions.
     """" Update a variable in the shelf as a moving average
 
     INPUT: new_point is a pd.Series with datetimeIndex
     """
-    with shelve.open('user_data') as user_data:
+    with shelve.open('user_data') as d:
         # Retrieve the old win rate and amount of recorded points:
-        data = user_data[entry]
+        data = d[varname]
         old_value = data[-1]
         n = len(data)
         # Calculate the new win rate:
-        new_value = (n*old_value + new_point)/(n+1)
+        new_value = (n*old_value + new_data)/(n+1)
         # Add the result to the user_data:
-        user_data[entry] = data.append(new_value)
+        d[varname] = data.append(new_value)
 
     return new_value
 
@@ -129,43 +131,76 @@ def update_win_rate(trade):
 
 
 def update_avg_profit(trade):
-    trade = trade.iloc[0]
-    p_rel = trade['P/L (%)']
+    t = trade.iloc[0]
+    p_rel = t['P/L (%)']
 
-    df = pd.Series([p_rel], pd.DatetimeIndex([trade['date']]))
+    df = pd.Series([p_rel], pd.DatetimeIndex([t['date']]))
     new_avg_profit = update_shelf('avg_profit', df)
 
     return new_avg_profit
 
 
 def update_avg_rrr(trade):
-    trade = trade.iloc[0]
-    entry = trade['entry']
-    stop = trade['stop']
-    exit = trade['exit']
+    t = trade.iloc[0]
+    entry = t['entry']
+    stop = t['stop']
+    close = t['exit']
 
-    rrr = risk_reward_ratio(entry, stop, exit)
-    # TODO: Do not update if it is a loss!
-    new_avg_rrr = update_shelf('avg_rrr', rrr)
+    if not close == stop:
+        rrr = risk_reward_ratio(entry, stop, close)
+        new_avg_rrr = update_shelf('avg_rrr', rrr)
+    else:
+        new_avg_rrr = 0
 
     return new_avg_rrr
 
 
 def update_avg_timespan(trade):
-    trade = trade.iloc[0]
+    # TODO: Not 100% sure if adding and averaging times works, check it!
+    t = trade.iloc[0]
+    delta = t['timespan']
 
+    df = pd.Series([delta], pd.DatetimeIndex([t['date']]))
+    new_avg_timespan = update_shelf('avg_timespan', df)
+
+    return new_avg_timespan
+
+
+def update_expectancy(trade):
+    # TODO: Make this function.
+    #   E = (1 + avg_win/avg_loss) * win_rate - 1
     pass
 
 
-def close_trade(open_trade):
-    # fill in the remaining variables, return complete dataFrame.
-    pass
+def close_trade(open_trade, close, note):
+    """" Fill in the remaining values from an open trade into a closed trade dataFrame"""
+    index = pd.DatetimeIndex([datetime.datetime.now()])
+    cols = closetab.closed_trade_cols
+    closed_trade = pd.DataFrame(index=index, columns=cols)
+
+    # Copy values that already exist.
+    for c in open_trade.columns:
+        closed_trade[c] = open_trade[c]
+    # TODO: Fill in the remaining values
+    closed_trade['P/L (%)'] = profit_rel(entry, close, qty, direction)
+    closed_trade['risk (%)'] = trade_risk(cap, open_trade)
+    closed_trade['RRR'] = 0
+    closed_trade['cap. share (%)'] = 0
+    closed_trade['timespan'] = 0
+    closed_trade['note'] = note
+
+    return closed_trade
 
 
 if __name__ == '__main__':
     trades = pd.read_excel('diary.xlsx', sheet_name='closed')
 
+    user_data = shelve.open('user_data')
+    cap = user_data['capital'][-1]
     x = trades.tail(1)
+
+    risk = trade_risk(cap, x)
+
     wr = update_win_rate(x)
     avg_prof = update_avg_profit(x)
     avg_rrr = update_avg_rrr(x)
