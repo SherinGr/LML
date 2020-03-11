@@ -21,32 +21,36 @@ layout = html.Div(
                                         html.H6(id='no_trades'),
                                         html.P('No. Trades')
                                     ],
-                                    className='mini_container'
+                                    className='mini_container',
+                                    style={'margin-left': '0', 'flex-grow': '1'}
                                 ),
                                 html.Div(
                                     [
                                         html.H6(id='avg_profit'),
                                         html.P('Avg. Profit')
                                     ],
-                                    className='mini_container'
+                                    className='mini_container',
+                                    style={'margin-left': '0', 'flex-grow': '1'}
                                 ),
                                 html.Div(
                                     [
                                         html.H6(id='wl_rate'),
                                         html.P('W/L Rate')
                                     ],
-                                    className='mini_container'
+                                    className='mini_container',
+                                    style={'margin-left': '0', 'flex-grow': '1'}
                                 ),
                                 html.Div(
                                     [
                                         html.H6(id='capital'),
                                         html.P('Capital ($)')
                                     ],
-                                    className='mini_container'
+                                    className='mini_container',
+                                    style={'margin-left': '0', 'margin-right': '0', 'flex-grow': '1'}
                                 )
                             ],
                             className='row container-display',
-                            style={'display': 'flex', 'justify-content': 'space-between', 'margin-right': '0'}
+                            style={'display': 'flex-inline', 'justify-content': 'space-between', 'margin-right': '0'}
                         ),
                         html.Div(
                             [
@@ -56,7 +60,8 @@ layout = html.Div(
                             style={'margin-left': '0', 'margin-right': '0', 'margin-top': '0', 'display': 'flex'}
                         )
                     ],
-                    className='eight columns'
+                    className='eight columns',
+                    style={}
                 ),
              ],
             className='row flex-display'

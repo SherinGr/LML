@@ -14,8 +14,6 @@ import risk
 
 from app import app, user_data, client
 
-# diary = user_data['diary_file']
-
 """ Dictionaries for dropdowns etc """
 
 pairs = [
@@ -66,7 +64,7 @@ def write_open_trade_to_records(record_file, trade):
 
 
 def open_risk_string():
-    current_capital = user_data['capital']
+    current_capital = user_data['capital'][-1]
     open_risk = sum(risk.trade_risk(current_capital, open_trades(user_data['diary_file'])))
 
     if open_risk > risk.max_open_risk:
@@ -80,7 +78,7 @@ def open_risk_string():
 
 def open_profit_string():
     profit = risk.open_profit(open_trades(user_data['diary_file']))
-    percent = profit/user_data['capital']*100
+    percent = profit/user_data['capital'][-1]*100
     if profit < 0:
         color = 'red'
     else:
@@ -111,7 +109,7 @@ layout = html.Div(
                         html.Div(
                             [
                                 html.P('Amount:'),
-                                dcc.Input(id='size', placeholder=0.0, type='number', value=np.nan, min=0,
+                                dcc.Input(id='qty', placeholder=0.0, type='number', value=np.nan, min=0,
                                           style={'width': '90%', 'display': 'inline', 'height': '40px'})
                             ],
                             style={'width': '15%', 'display': 'inline-block', 'vertical-align': 'top'}
@@ -152,8 +150,7 @@ layout = html.Div(
                                 ),
                                 html.Div(
                                     [
-                                        # TODO: Remove this, extend slider to five options.
-                                        #   Add functionality in callback to determine short or long
+                                        # It would be possible to determine SHORT/LONG from entry and stop!
                                         html.P('Direction:'),
                                         dcc.RadioItems(id='direction', options=directions, value='',
                                                        style={'display': 'flex', 'margin-top': '10px',
@@ -243,7 +240,8 @@ layout = html.Div(
                                     html.Div(
                                         [
                                             html.P('Allowed size:', style={'display': 'block'}),
-                                            dcc.Input(id='size2', placeholder=0.0, type='number', value=np.nan, min=0,
+                                            dcc.Input(id='qty2', placeholder=0.0, type='number', value=np.nan,
+                                                      min=0,
                                                       readOnly=True,
                                                       style={'display': 'inline', 'width': '100%'})
                                         ],
@@ -303,7 +301,7 @@ def update_profit(_):
 
 
 # Callback for calculate trade size button:
-@app.callback(Output('size2', 'value'),
+@app.callback(Output('qty2', 'value'),
               [Input('calc_size_button', 'n_clicks')],
               [State('entry2', 'value'),
                State('stop2', 'value'),
@@ -313,15 +311,15 @@ def calculate_size(clicks, entry, stop, max_risk, leverage):
     if clicks is None:
         pass
     else:
-        cap = user_data['capital']
-        return round(risk.position_size(cap, entry, stop, max_risk, leverage), 4)
+        cap = user_data['capital'][-1]
+        return round(risk.max_qty(cap, entry, stop, max_risk, leverage), 4)
 
 
 # Callback for enter trade button:
 # TODO: Handle error when input is not complete yet
 @app.callback([Output('open_table', 'data'),
                Output('entry', 'value'),
-               Output('size', 'value'),
+               Output('qty', 'value'),
                Output('stop', 'value'),
                Output('type', 'value'),
                Output('direction', 'value'),
@@ -330,22 +328,22 @@ def calculate_size(clicks, entry, stop, max_risk, leverage):
               [Input('enter_trade_button', 'n_clicks')],
               [State('pair', 'value'),
                State('entry', 'value'),
-               State('size', 'value'),
+               State('qty', 'value'),
                State('stop', 'value'),
                State('type', 'value'),
                State('direction', 'value'),
                State('confidence', 'value')]
               )
-def submit_trade(clicks, pair, entry, size, stop, idea, direction, confidence):
+def submit_trade(clicks, pair, entry, qty, stop, idea, direction, confidence):
     if clicks is None:
         pass
-    elif any(x == 0 for x in [entry, size, stop]) or idea == '' or direction == '':
+    elif any(x == 0 for x in [entry, qty, stop]) or idea == '' or direction == '':
         return 0
     else:
         # Add new trade at the top of the diary excel file:
         index = pd.DatetimeIndex([datetime.datetime.now()])
         trade = pd.DataFrame({
-            'pair': pair, 'size': size, 'entry': entry, 'stop': stop, 'type': idea, 'direction': direction,
+            'pair': pair, 'size': qty, 'entry': entry, 'stop': stop, 'type': idea, 'direction': direction,
             'confidence':
                 confidence
         }, index=index)

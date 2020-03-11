@@ -3,13 +3,11 @@ import dash_table
 import dash_html_components as html
 import dash_core_components as dcc
 
-from app import app
-from app import diary
-
+from app import app, user_data
 from tabs.open import *
 
-closed_trade_cols = ['pair', 'size', 'entry', 'exit', 'stop', 'P/L (%)',
-                     'risk (%)', 'RRR', 'relative size', 'timespan', 'direction', 'type', 'confidence', 'note']
+closed_trade_cols = ['pair', 'size', 'entry', 'stop', 'exit', 'P/L (%)',
+                     'risk (%)', 'RRR', 'cap. share (%)', 'timespan', 'direction', 'type', 'confidence', 'note']
 closed_trade_dict = [{'name': c, 'id': c} for c in closed_trade_cols]
 
 
@@ -20,12 +18,15 @@ def closed_trades(record_file):
     return table_data
 
 
+def get_trade_features(trade):
+    pass
+
+
 def write_closed_trade_to_records(trade):
     # TODO:
     #   1. Write trade to closed sheet
     #   2. remove trade from open sheet
     pass
-
 
 
 # TODO: Update capital on each trade that is closed, save in df.
@@ -42,17 +43,17 @@ layout = html.Div(
                         dash_table.DataTable(
                             id='open_table2',
                             columns=open_trade_dict,
-                            data=open_trades(diary, dict_output=True),
+                            data=open_trades(user_data['diary_file'], dict_output=True),
                             style_table={
                                 'height': '126px',
-                                'overflow-y': 'scroll'
+                                'overflow-y': 'scroll',
                             },
-                            # You can use style conditional to color profitable and losing trades!
                             style_cell_conditional=[
                                 {
                                     'if': {'column_id': c},
                                     'text-align': 'center'
                                 } for c in ['pair', 'direction']
+
                             ],
                             row_selectable='single',
                             style_as_list_view=True,
@@ -91,9 +92,9 @@ layout = html.Div(
                 dash_table.DataTable(
                     id='closed_table',
                     columns=closed_trade_dict,
-                    data=closed_trades(diary),
+                    data=closed_trades(user_data['diary_file']),
                     style_table={
-                      'height': '250px',
+                      'height': '270px',
                       'overflow-y': 'scroll'
                     },
                     # You can use style conditional to color profitable and losing trades!
@@ -101,7 +102,25 @@ layout = html.Div(
                         {
                             'if': {'column_id': c},
                             'text-align': 'center'
-                        } for c in ['pair', 'direction']
+                        } for c in ['pair', 'direction', 'type']
+                    ],
+                    style_data_conditional=[
+                        {
+                            'if': {
+                                'column_id': 'P/L (%)',
+                                'filter_query': '{P/L (%)} > 0',
+                            },
+                            'backgroundColor': '#3D9970',
+                            'color': 'white',
+                        },
+                        {
+                            'if': {
+                                'column_id': 'P/L (%)',
+                                'filter_query': '{P/L (%)} < 0',
+                            },
+                            'backgroundColor': '#A83232',
+                            'color': 'white',
+                        }
                     ],
                     style_as_list_view=True,
                     style_cell={'padding': '5px'},
@@ -129,13 +148,18 @@ layout = html.Div(
 
 @app.callback(Output('closed_table', 'data'),
               [Input('close_trade_button', 'n_clicks')],
-              [State('exit', 'value'),
+              [State('open_table2', 'data'),
+               State('open_table2', 'selected_rows'),
+               State('exit', 'value'),
                State('note', 'value')])
-def close_trade(clicks, exit, note):
+def close_trade(clicks, open_trades, selected_trade, exit, note):
+    if clicks is None:
+        pass
+    else:
+        pass
     # TODO:
     #   1. calculate values on closing a trade
     #   1b. Update per_trade_capital dataframe!!!
+    #   1c. Make sure to add the timespan
     #   2. add to diary, remove from open
     #   3. display in table
-
-    pass
