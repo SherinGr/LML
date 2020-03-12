@@ -3,19 +3,51 @@ import numpy as np
 import shelve
 import datetime
 
-#import cryptowatch as cw
+from app import client, user_data
 
-from app import client  #, user_data
+# TODO: !VERY IMPORTANT! Some functions use the user_data variable assuming it is loaded, other functions explicitly
+#  create it by opening and closing the shelf within theirselves. What is preferred? Make this consistent!
 
-import tabs.close as closetab
+""" Constants """
 
-max_open_risk = 0.05
-commission = 0.001
+max_open_risk = 0.05  # 5%
+commission = 0.001  # 0.1%
+month_profit_target = 0.10  # 10%
 
-# TODO: RENAME THIS MODULE
+""" Dictionaries for dropdowns etc """
 
-""" Functions to do calculations """
-# This module has functions to calculate features of a trade, such as the maximum size, risk, profit, etc.
+pairs = [
+    {'label': 'ETH/USDT', 'value': 'ETHUSDT'},
+    {'label': 'BTC/USDT', 'value': 'BTCUSDT'},
+    {'label': 'XRP/USDT', 'value': 'XRPUSDT'},
+         ]
+
+types = [
+    {'label': 'pullback to value', 'value': 'pullback to value'},
+    {'label': 'ATR extreme', 'value': 'ATR extreme'},
+    {'label': 'price rejection', 'value': 'price rejection'}
+]
+
+directions = [
+    {'label': 'LONG', 'value': 'LONG'},
+    {'label': 'SHORT', 'value': 'SHORT'}
+]
+
+spans = [
+    {'label': 'Daily', 'value': 'D'},
+    {'label': 'Weekly', 'value': 'W'},
+    {'label': 'Monthly', 'value': 'M'}
+]
+
+open_trade_cols = ['pair', 'size', 'entry', 'stop', 'direction']
+open_trade_dict = [{'name': c, 'id': c} for c in open_trade_cols]
+
+closed_trade_cols = ['pair', 'size', 'entry', 'stop', 'exit', 'P/L (%)',
+                     'risk (%)', 'RRR', 'cap. share (%)', 'timespan', 'direction', 'type', 'confidence', 'note']
+closed_trade_dict = [{'name': c, 'id': c} for c in closed_trade_cols]
+
+
+""" Functions """
 
 
 def max_qty(entry, stop, max_risk, leverage=1):
@@ -101,7 +133,7 @@ def risk_reward_ratio(entry, stop, close):
         return abs((close-entry)/(entry-stop))
 
 
-def update_shelf(varname, new_data):
+def update_shelf(var_name, new_data):
     # TODO: May not be necessary to open and close the shelve in these functions.
     """" Update a variable in the shelf as a moving average
 
@@ -109,13 +141,13 @@ def update_shelf(varname, new_data):
     """
     with shelve.open('user_data') as d:
         # Retrieve the old win rate and amount of recorded points:
-        data = d[varname]
+        data = d[var_name]
         old_value = data[-1]
         n = len(data)
         # Calculate the new win rate:
         new_value = (n*old_value + new_data)/(n+1)
         # Add the result to the user_data:
-        d[varname] = data.append(new_value)
+        d[var_name] = data.append(new_value)
 
     return new_value
 
@@ -148,7 +180,8 @@ def update_avg_rrr(trade):
 
     if not close == stop:
         rrr = risk_reward_ratio(entry, stop, close)
-        new_avg_rrr = update_shelf('avg_rrr', rrr)
+        df = pd.Series([rrr], pd.DatetimeIndex([t['date']]))
+        new_avg_rrr = update_shelf('avg_rrr', df)
     else:
         new_avg_rrr = 0
 
@@ -172,28 +205,85 @@ def update_expectancy(trade):
     pass
 
 
-def close_trade(open_trade, close, note):
+def time_span(open_trade):
+    start = open_trade['date']
+    end = datetime.datetime.now()
+    return end - start
+
+
+def close_trade(open_trade, close, note=''):
     """" Fill in the remaining values from an open trade into a closed trade dataFrame"""
     index = pd.DatetimeIndex([datetime.datetime.now()])
-    cols = closetab.closed_trade_cols
-    closed_trade = pd.DataFrame(index=index, columns=cols)
+    closed_trade = pd.DataFrame(index=index, columns=closed_trade_cols)
 
     # Copy values that already exist.
     for c in open_trade.columns:
         closed_trade[c] = open_trade[c]
-    # TODO: Fill in the remaining values
+    # Fill in the remaining values:
+    t = open_trade.iloc[0]
+    entry = t['entry']
+    stop = t['stop']
+    qty = t['size']
+    direction = t['direction']
+
+    cap = user_data['capital'][-1]
+
     closed_trade['P/L (%)'] = profit_rel(entry, close, qty, direction)
     closed_trade['risk (%)'] = trade_risk(cap, open_trade)
-    closed_trade['RRR'] = 0
-    closed_trade['cap. share (%)'] = 0
-    closed_trade['timespan'] = 0
+    closed_trade['RRR'] = risk_reward_ratio(entry, stop, close)
+    closed_trade['cap. share (%)'] = entry*qty/cap*100
+    closed_trade['timespan'] = time_span(open_trade)
     closed_trade['note'] = note
 
     return closed_trade
 
 
+def read_trades(record_file, status, dict_output=False):
+    trades = pd.read_excel(record_file, sheet_name=status)
+    trades = trades.drop(columns=['date'])
+    if dict_output:
+        # For using this function in a dash table we need a dict as output:
+        trades = trades.to_dict(orient='records')
+    return trades
+
+
+def write_trade_to_records(record_file, status, trade):
+    with pd.ExcelWriter(path=record_file, engine='openpyxl', datetime_format='DD-MM-YYYY hh:mm', mode='a') as \
+            writer:
+        # Open the file:
+        writer.book = load_workbook(record_file)
+        # Copy existing sheets:
+        writer.sheets = dict((ws.title, ws) for ws in writer.book.worksheets)
+        # Add new trade on top of the existing data:
+        sheet = status
+        writer.book[sheet].insert_rows(2)
+        trade.to_excel(writer, sheet_name=sheet, startrow=1, header=None, index_label='date')
+        writer.close()
+
+
+def capital_target(n_days):
+    """ Calculate the evolution of the capital over time with a constant profit each day. This is a target that a
+    trader can try to aim for.
+
+    INPUTS: month_profit - target profit (%) for a month
+            n_days - number of days to predict forwards
+    """
+    start_date = datetime.datetime.date(user_data['capital'].index[0])
+    d = pd.date_range(start_date, periods=n_days)
+
+    # Calculate the capital over time with a constant profit each day:
+    start_cap = user_data['capital'][0]
+    daily_profit = (1+month_profit_target)**(12/365.25)-1
+    v = np.ones(n_days)*(1+daily_profit)
+    cap_array = np.cumprod(v)*start_cap
+
+    prediction = pd.Series(cap_array, d)
+
+    return prediction
+
+
 if __name__ == '__main__':
-    trades = pd.read_excel('diary.xlsx', sheet_name='closed')
+    trades = pd.read_excel('diary.xlsx', sheet_name='open')
 
     user_data = shelve.open('user_data')
     cap = user_data['capital'][-1]
@@ -201,9 +291,14 @@ if __name__ == '__main__':
 
     risk = trade_risk(cap, x)
 
-    wr = update_win_rate(x)
-    avg_prof = update_avg_profit(x)
-    avg_rrr = update_avg_rrr(x)
+    y = close_trade(x, 134)
+    # TODO: Test the line above
+
+    wr = update_win_rate(y)
+    avg_prof = update_avg_profit(y)
+    avg_rrr = update_avg_rrr(y)
+
+    pred = capital_target(10, 200)
 
     user_data = shelve.open('user_data')
     p = user_data['avg_profit']

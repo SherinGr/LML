@@ -5,27 +5,7 @@ import dash_core_components as dcc
 from dash.dependencies import Input, Output, State
 
 from app import app, user_data
-
-import tabs.open as opentab
-
-closed_trade_cols = ['pair', 'size', 'entry', 'stop', 'exit', 'P/L (%)',
-                     'risk (%)', 'RRR', 'cap. share (%)', 'timespan', 'direction', 'type', 'confidence', 'note']
-closed_trade_dict = [{'name': c, 'id': c} for c in closed_trade_cols]
-
-
-def closed_trades(record_file):
-    trades = pd.read_excel(record_file, sheet_name='closed')
-    trades = trades.drop(columns=['date'])
-    table_data = trades.to_dict(orient='records')
-    return table_data
-
-
-def write_closed_trade_to_records(trade):
-    # TODO:
-    #   1. Write trade to closed sheet
-    #   2. remove trade from open sheet
-    pass
-
+import tradelib as tl
 
 layout = html.Div(
     [
@@ -36,8 +16,8 @@ layout = html.Div(
                         html.H6('Select A Position To Close:', style={'margin-bottom': '10px'}),
                         dash_table.DataTable(
                             id='open_table2',
-                            columns=opentab.open_trade_dict,
-                            data=opentab.open_trades(user_data['diary_file'], dict_output=True),
+                            columns=tl.open_trade_dict,
+                            data=tl.read_trades(user_data['diary_file'], 'open', dict_output=True),
                             style_table={
                                 'height': '126px',
                                 'overflow-y': 'scroll',
@@ -85,8 +65,8 @@ layout = html.Div(
                 html.H6('Closed Trades:'),
                 dash_table.DataTable(
                     id='closed_table',
-                    columns=closed_trade_dict,
-                    data=closed_trades(user_data['diary_file']),
+                    columns=tl.closed_trade_dict,
+                    data=tl.read_trades(user_data['diary_file'], 'closed', dict_output=True),
                     style_table={
                       'height': '270px',
                       'overflow-y': 'scroll'
@@ -140,20 +120,21 @@ layout = html.Div(
 #     pass
 
 
-@app.callback(Output('closed_table', 'data'),
-              [Input('close_trade_button', 'n_clicks')],
-              [State('open_table2', 'data'),
-               State('open_table2', 'selected_rows'),
-               State('exit', 'value'),
-               State('note', 'value')])
-def close_trade(clicks, open_trades, selected_trade, exit, note):
-    if clicks is None:
-        pass
-    else:
-        pass
-    # TODO:
-    #   1. calculate values on closing a trade
-    #   1b. Update per_trade_capital dataframe!!!
-    #   1c. Make sure to add the timespan
-    #   2. add to diary, remove from open
-    #   3. display in table
+# @app.callback(Output('closed_table', 'data'),
+#               [Input('close_trade_button', 'n_clicks')],
+#               [State('open_table2', 'data'),
+#                State('open_table2', 'selected_rows'),
+#                State('exit', 'value'),
+#                State('note', 'value')])
+# def close_trade(clicks, open_trades, selected_trade, exit, note):
+#     if clicks is None:
+#         pass
+#     else:
+#         pass
+#     # TODO:
+#     #   1. calculate values on closing a trade
+#     #   1b. Update per_trade_capital dataframe!!!
+#     #   1c. Make sure to add the timespan
+#     #   2. add to diary,
+#     #   2b. remove from open !!!
+#     #   3. display in table

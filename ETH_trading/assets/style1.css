@@ -594,7 +594,7 @@ there.
     background-color: #e8e8e8;
     padding: 15px;
     position: relative;
-    box-shadow: 2px 2px 2px lightgrey;
+    box-shadow: 2px 2px 2px black;
   }
   #plotly-image {
     margin-bottom: 0px !important;

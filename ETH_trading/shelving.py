@@ -36,8 +36,8 @@ keys = list(user_data.keys())
 # user_data['capital'] = capital_df
 #
 # user_data['expectancy'] = pd.Series(0, pd.DatetimeIndex([datetime.datetime.now()]))
-user_data['win_rate'] = pd.Series(0.5, pd.DatetimeIndex([datetime.datetime.now()]))
-user_data['avg_profit'] = pd.Series(0, pd.DatetimeIndex([datetime.datetime.now()]))
+# user_data['win_rate'] = pd.Series(0.5, pd.DatetimeIndex([datetime.datetime.now()]))
+# user_data['avg_profit'] = pd.Series(0, pd.DatetimeIndex([datetime.datetime.now()]))
 # user_data['avg_rrr'] = pd.Series(1, pd.DatetimeIndex([datetime.datetime.now()]))
 # user_data['avg_timespan'] = pd.Series(datetime.timedelta(0), pd.DatetimeIndex([datetime.datetime.now()]))
 
