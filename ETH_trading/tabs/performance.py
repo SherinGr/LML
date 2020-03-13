@@ -8,6 +8,7 @@ cap = user_data['capital'][-1]
 no_trades = len(user_data['capital'])
 avg_profit = user_data['avg_profit'][-1]
 wl_rate = user_data['win_rate'][-1]
+expect = user_data['expectancy'][-1]
 
 y_scale_options = [
     {'label': 'lin', 'value': 'lin'},
@@ -77,7 +78,7 @@ layout = html.Div(
                                 ),
                                 html.Div(
                                     [
-                                        html.H5('NaN', style={'margin': '0'}),
+                                        html.H5('{:.2f}'.format(expect), style={'margin': '0'}),
                                         html.P('Expectancy', style={'margin': '0'})
                                     ],
                                     className='mini_container',
@@ -136,7 +137,7 @@ layout = html.Div(
                                                         'x': user_data['capital'].index,
                                                         'y': user_data['capital'].values,
                                                         'name': 'Capital',
-                                                        'line': dict(shape='spline', width=2,
+                                                        'line': dict(shape='linear', width=2,
                                                                      color='#9DDCFA')
                                                     },
                                                     target_capital_data(20)

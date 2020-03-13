@@ -11,6 +11,7 @@ layout = html.Div(
     [
         html.Div(
             [
+                html.Div(id='selected_trade', style={'visibility': 'hidden'}),
                 html.Div(
                     [
                         html.H6('Select A Position To Close:', style={'margin-bottom': '10px'}),
@@ -30,12 +31,13 @@ layout = html.Div(
 
                             ],
                             row_selectable='single',
+                            selected_rows=[0],
                             style_as_list_view=True,
                             style_cell={'padding': '5px'},
                             style_header={'background-color': 'white', 'font-weight': 'bold'}
                         )
                     ],
-                    className='pretty_container six columns',
+                    className='pretty_container seven columns',
                     style={'margin-left': '0'}
                 ),
                 html.Div(
@@ -54,7 +56,7 @@ layout = html.Div(
                         html.P('Note:', style={'margin-top': '10px'}),
                         dcc.Input(id='note', style={'width': '100%'})
                     ],
-                    className='pretty_container six columns',
+                    className='pretty_container five columns',
                     style={'margin-right': '0', 'margin-left': '0'}
                 )
             ],
@@ -109,32 +111,26 @@ layout = html.Div(
 )
 
 
-# @app.callback(Output('selected_trade', 'children'),
-#               [Input('open_table2', 'rows'),
-#                Input('open_table2', 'selected_row_indices')])
-# def open_trade_selected(rows, selected_row):
-#     # TODO:
-#     #   1. retrieve the selected trade
-#     #   2. Show it in the close trade table
-#
-#     pass
+@app.callback(Output('closed_table', 'data'),
+              [Input('close_trade_button', 'n_clicks')],
+              [State('open_table2', 'selected_rows'),
+               State('exit', 'value'),
+               State('note', 'value')])
+def close_trade(clicks, selected_row, close, note):
+    if clicks is None or not selected_row:
+        pass
+    else:
+        record_file = user_data['diary_file']
+        open_trades = tl.read_trades(record_file, 'open')
+        trade = open_trades.iloc[selected_row]
+        # Compute features of the closed trade:
+        closed_trade = tl.fill_trade(trade, close, note)
+        # Write the trade to the records:
+        tl.write_trade_to_records(record_file, 'closed', closed_trade)
+        # Remove the open trade from the open trade records:
+        # TODO
+        # Update the running average features:
+        tl.update_user_data(closed_trade)
 
-
-# @app.callback(Output('closed_table', 'data'),
-#               [Input('close_trade_button', 'n_clicks')],
-#               [State('open_table2', 'data'),
-#                State('open_table2', 'selected_rows'),
-#                State('exit', 'value'),
-#                State('note', 'value')])
-# def close_trade(clicks, open_trades, selected_trade, exit, note):
-#     if clicks is None:
-#         pass
-#     else:
-#         pass
-#     # TODO:
-#     #   1. calculate values on closing a trade
-#     #   1b. Update per_trade_capital dataframe!!!
-#     #   1c. Make sure to add the timespan
-#     #   2. add to diary,
-#     #   2b. remove from open !!!
-#     #   3. display in table
+        closed_trades = tl.read_trades(record_file, 'closed', dict_output=True)
+        return closed_trades
