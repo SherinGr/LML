@@ -1,6 +1,8 @@
 import dash_core_components as dcc
 import dash_html_components as html
 
+import plotly.figure_factory as ff
+
 from app import app, user_data
 import tradelib as tl
 
@@ -30,6 +32,38 @@ def target_capital_data(n_days):
         line=dict(shape='spline', width=2, color='#8dc270')
     )
     return data
+
+
+def shortlong_data():
+    trades = tl.read_trades(user_data['diary_file'], 'closed')
+    shorts = trades[trades['direction'] == 'SHORT']
+    longs = trades[trades['direction'] == 'LONG']
+
+    win_s = sum(shorts['P/L (%)'] >= 0)
+    win_l = sum(longs['P/L (%)'] >= 0)
+
+    lose_s = sum(shorts['P/L (%)'] < 0)
+    lose_l = sum(longs['P/L (%)'] < 0)
+
+    graph_data = [
+        {'x': ['SHORT', 'LONG'],
+         'y': [win_s, win_l],
+         'name': 'won',
+         'type': 'bar',
+         'color': 'green'
+         },
+        {'x': ['SHORT', 'LONG'],
+         'y': [lose_s, lose_l],
+         'name': 'lost',
+         'type': 'bar',
+         'marker_color': 'indianred'
+         }
+    ]
+    return graph_data
+
+
+def timespan_data():
+    pass
 
 
 layout = html.Div(
@@ -177,7 +211,20 @@ layout = html.Div(
             [
                 html.Div(
                     [
-                      html.H1('SHORTLONG STACKED BARPLOT')
+                        html.H5('Short vs. Long Performance'),
+                        dcc.Graph(
+                            id='shortlong_graph',
+                            figure={
+                                'data': shortlong_data(),
+                                'layout': dict(
+                                    barmode='stack',
+                                    margin={'l': 20, 'r': 15, 't': 10, 'b': 25},
+                                    paper_bgcolor='#e8e8e8',
+                                    font={'family': 'Dosis', 'size': 13},
+                                    showlegend=False
+                                )
+                            }
+                        )
                     ],
                     className='pretty_container six columns',
                     style={'margin-left': '0', 'margin-top': '0', 'margin-right': '0'}
