@@ -3,6 +3,8 @@ import numpy as np
 import shelve
 import datetime
 
+from openpyxl import load_workbook
+
 from app import client, user_data
 
 """ Constants """
@@ -290,8 +292,8 @@ def fill_trade(open_trade, close, note='-'):
 
 def read_trades(record_file, status, dict_output=False):
     trades = pd.read_excel(record_file, sheet_name=status)
-    trades = trades.drop(columns=['date'])
     if dict_output:
+        trades = trades.drop(columns=['date'])
         # For using this function in a dash table we need a dict as output:
         trades = trades.to_dict(orient='records')
     return trades
@@ -309,6 +311,14 @@ def write_trade_to_records(record_file, status, trade):
         writer.book[sheet].insert_rows(2)
         trade.to_excel(writer, sheet_name=sheet, startrow=1, header=None, index_label='date')
         writer.close()
+
+
+def remove_trade_from_records(record_file, idx):
+    records = load_workbook(record_file)
+    open_sheet = records['open']
+    open_sheet.delete_rows(idx+2)
+    records.save(record_file)
+    pass
 
 
 def capital_target(n_days):
@@ -333,23 +343,25 @@ def capital_target(n_days):
 
 
 if __name__ == '__main__':
-    trades = pd.read_excel('diary.xlsx', sheet_name='open')
+    # trades = pd.read_excel('diary.xlsx', sheet_name='open')
 
-    import reset_shelf
-    user_data = shelve.open('user_data')
-    cap = user_data['capital'][-1]
-    x = trades.tail(1)
+    remove_trade_from_records('diary.xlsx', 0)
 
-    risk = trade_risk(cap, x)
-
-    y = fill_trade(x, 201)
-
-    update_user_data(y)
-
-    pred = capital_target(200)
-
-    p = user_data['avg_profit']
-    wr = user_data['win_rate']
-    r = user_data['avg_rrr']
+    # import reset_shelf
+    # user_data = shelve.open('user_data')
+    # cap = user_data['capital'][-1]
+    # x = trades.tail(1)
+    #
+    # risk = trade_risk(cap, x)
+    #
+    # y = fill_trade(x, 201)
+    #
+    # update_user_data(y)
+    #
+    # pred = capital_target(200)
+    #
+    # p = user_data['avg_profit']
+    # wr = user_data['win_rate']
+    # r = user_data['avg_rrr']
 
 

@@ -180,6 +180,7 @@ layout = html.Div(
                                                     # xaxis={'title': 'Date'},
                                                     yaxis={'type': 'lin', 'title': 'Capital ($)'},
                                                     margin={'l': 50, 'r': 15, 't': 10, 'b': 35},
+                                                    height=350,
                                                     legend={'x': 0.04, 'y': 0.96},
                                                     paper_bgcolor='#e8e8e8',
                                                     font={'family': 'Dosis', 'size': 13}
@@ -202,16 +203,16 @@ layout = html.Div(
         ),
         html.Div(
             [
-              html.H1('MONTHLY/DAILY/WEEKLY STATS')
-            ],
-            className='pretty_container flex-display',
-            style={'margin-left': '0', 'margin-right': '0', 'margin-top': '0'}
-        ),
-        html.Div(
-            [
                 html.Div(
                     [
-                        html.H5('Short vs. Long Performance'),
+                        html.H5('Periodic Performance Indicators', style={'line-height': '0.5'})
+                    ],
+                    className='pretty_container eight columns',
+                    style={'margin-left': '0', 'margin-top': '0', 'margin-right': '0'}
+                ),
+                html.Div(
+                    [
+                        html.H5('Short/Long Performance', style={'line-height': '0.5', 'margin-bottom': '10'}),
                         dcc.Graph(
                             id='shortlong_graph',
                             figure={
@@ -219,6 +220,7 @@ layout = html.Div(
                                 'layout': dict(
                                     barmode='stack',
                                     margin={'l': 20, 'r': 15, 't': 10, 'b': 25},
+                                    height=250,
                                     paper_bgcolor='#e8e8e8',
                                     font={'family': 'Dosis', 'size': 13},
                                     showlegend=False
@@ -226,12 +228,25 @@ layout = html.Div(
                             }
                         )
                     ],
+                    className='pretty_container four columns',
+                    style={'margin-top': '0', 'margin-right': '0'}
+                )
+            ],
+            className='row flex-display',
+        ),
+        html.Div(
+            [
+
+                html.Div(
+                    [
+                      html.H1('TIMESPAN STACKED DISTPLOT', style={'line-height': '0.5'})
+                    ],
                     className='pretty_container six columns',
                     style={'margin-left': '0', 'margin-top': '0', 'margin-right': '0'}
                 ),
                 html.Div(
                     [
-                      html.H1('TIMESPAN STACKED DISTPLOT')
+                      html.H1('FEATURE OVER TIME PLOT', style={'line-height': '0.5'})
                     ],
                     className='pretty_container six columns',
                     style={'margin-top': '0', 'margin-right': '0'}

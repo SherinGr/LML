@@ -5,7 +5,6 @@ import dash_table
 import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output, State
-from openpyxl import load_workbook
 
 import tradelib as tl
 from app import app, user_data, client
@@ -18,7 +17,7 @@ def open_risk_string():
     current_capital = user_data['capital'][-1]
     open_risk = sum(tl.trade_risk(current_capital, tl.read_trades(user_data['diary_file'], 'open')))
 
-    if open_risk > tl.max_open_risk:
+    if open_risk > tl.max_open_risk*100:
         color = 'red'
     else:
         color = 'green'
@@ -287,7 +286,7 @@ def calculate_size(clicks, entry, stop, max_risk, leverage):
               )
 def submit_trade(clicks, pair, entry, qty, stop, idea, direction, confidence):
     if clicks is None:
-        pass
+        trades = tl.read_trades(user_data['diary_file'], 'open', dict_output=True)
     elif any(x == 0 for x in [entry, qty, stop]) or idea == '' or direction == '':
         return 0
     else:
@@ -302,4 +301,4 @@ def submit_trade(clicks, pair, entry, qty, stop, idea, direction, confidence):
         tl.write_trade_to_records(user_data['diary_file'], 'open', trade)
         trades = tl.read_trades(user_data['diary_file'], 'open', dict_output=True)
 
-        return trades, 0, 0, 0, '', '', 2, open_risk_string()
+    return trades, 0, 0, 0, '', '', 2, open_risk_string()
