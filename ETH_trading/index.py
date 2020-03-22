@@ -13,7 +13,7 @@ app.layout = html.Div(
                 style={'margin-top': '0', 'margin-bottom': '0', 'color': '#fafafa', 'text-align': 'center'}),
         html.H5("Good records are the key to consistent profits",
                 style={'margin-top': '0', 'color': '#fafafa', 'text-align': 'center'}),
-        dcc.Tabs(id='app_tabs', value='close', parent_className='custom-tabs', className='custom-tabs-container',
+        dcc.Tabs(id='app_tabs', value='open', parent_className='custom-tabs', className='custom-tabs-container',
                  children=[
                         dcc.Tab(label='Open Trade', value='open',
                                 className='custom-tab', selected_className='custom-tab--selected',
@@ -39,13 +39,13 @@ app.layout = html.Div(
 def render_content(tab):
     if tab == 'open':
         # OPEN NEW TRADES:
-        return open.layout
+        return open.serve_layout()
     elif tab == 'close':
         # RECORD OF OLD TRADES:
-        return close.layout
+        return close.serve_layout()
     elif tab == 'perf':
         # PERFORMANCE OF CAPITAL:
-        return performance.layout
+        return performance.serve_layout()
     else:
         raise NameError('Tab with name "' + tab + '" does not exist')
 

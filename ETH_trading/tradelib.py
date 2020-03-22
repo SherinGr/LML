@@ -225,12 +225,12 @@ def update_avg_timespan(trade):
 
 
 def update_total_profit(trade):
-    p_abs = profit_abs(trade)
-    if p_abs < 0:
-        user_data['total_loss'] += p_abs
+    p = profit_abs(trade)  # p_abs means the absolute profit in $, can be negative!
+    if p < 0:
+        user_data['total_loss'] += p
         user_data['n_losses'] += 1
     else:
-        user_data['total_gain'] += p_abs
+        user_data['total_gain'] += p
         user_data['n_wins'] += 1
 
 
@@ -251,7 +251,7 @@ def update_expectancy(trade):
         avg_win = user_data['total_gain'] / wins
 
     win_rate = user_data['win_rate'][-1]
-    expectancy = avg_win*win_rate - (1-win_rate)*avg_loss
+    expectancy = avg_win*win_rate + (1-win_rate)*avg_loss
 
     df = pd.Series(expectancy, trade.index)
     data = user_data['expectancy']
