@@ -28,6 +28,7 @@ stats_table_cols = [{'name': 'period', 'id': 'period'},
                     {'name': 'trades', 'id': 'trades'},
                     {'name': 'profit', 'id': 'P/L'}]
 
+
 def target_capital_data(n_days):
     d = tl.capital_target(n_days)
     data = dict(
