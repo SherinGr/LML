@@ -72,8 +72,7 @@ body {
 
 .custom-tab {
     color: black;
-    border-top-left-radius: 0px;
-    border-top-right-radius: 0px;
+    border-radius: 4px;
     border-top: 3px solid transparent !important;
     border-left: 0px !important;
     border-right: 0px !important;
@@ -84,12 +83,12 @@ body {
     display: inline !important;
     align-items: center;
     justify-content: center;
-    display: inline;
+    margin-right: 10px;
 }
 .custom-tab--selected {
     color: #9DDCFA;
     /*box-shadow: 1px 1px 0px white;*/
-    border-left: 1px solid lightgrey !important;
+    border-left: 0px solid lightgrey !important;
     border-right: 0px solid lightgrey !important;
     border-top: 3px solid #9DDCFA !important;
     border-bottom: 0px;

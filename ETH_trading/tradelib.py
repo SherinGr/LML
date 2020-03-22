@@ -43,7 +43,7 @@ open_trade_cols = ['pair', 'size', 'entry', 'stop', 'direction']
 open_trade_dict = [{'name': c, 'id': c} for c in open_trade_cols]
 
 closed_trade_cols = ['pair', 'size', 'entry', 'stop', 'exit', 'P/L (%)',
-                     'risk (%)', 'RRR', 'cap. share (%)', 'timespan', 'direction', 'type', 'confidence', 'note']
+                     'risk (%)', 'RRR', 'cap. share (%)', 'timespan (min)', 'direction', 'type', 'confidence', 'note']
 closed_trade_dict = [{'name': c, 'id': c} for c in closed_trade_cols]
 
 
@@ -143,6 +143,27 @@ def risk_reward_ratio(trade):
         return abs((close-entry)/(entry-stop))
 
 
+def capital_target(n_days):
+    """ Calculate the evolution of the capital over time with a constant profit each day. This is a target that a
+    trader can try to aim for.
+
+    INPUTS: month_profit - target profit (%) for a month
+            n_days - number of days to predict forwards
+    """
+    start_date = datetime.datetime.date(user_data['capital'].index[0])
+    d = pd.date_range(start=start_date, periods=n_days, freq='D')
+
+    # Calculate the capital over time with a constant profit each day:
+    start_cap = user_data['capital'][0]
+    daily_profit = (1+month_profit_target)**(12/365.25)-1
+    v = np.ones(n_days)*(1+daily_profit)
+    cap_array = np.cumprod(v)*start_cap/(1+daily_profit)
+
+    prediction = pd.Series(cap_array, d)
+
+    return prediction
+
+
 def update_shelf(var_name, new_data):
     """" Update a variable in the shelf as a moving average
 
@@ -162,11 +183,11 @@ def update_shelf(var_name, new_data):
 
 
 def update_win_rate(trade):
-    # Check if the trade is a winner:
-    trade = trade.set_index('date')
-    is_winner = trade['P/L (%)'] > 0
+    t = trade.iloc[0]
+    is_winner = t['P/L (%)'] > 0
 
-    new_win_rate = update_shelf('win_rate', is_winner)
+    df = pd.Series(int(is_winner), trade.index)
+    new_win_rate = update_shelf('win_rate', df)
 
     return new_win_rate
 
@@ -175,7 +196,7 @@ def update_avg_profit(trade):
     t = trade.iloc[0]
     p_rel = t['P/L (%)']
 
-    df = pd.Series([p_rel], pd.DatetimeIndex([t['date']]))
+    df = pd.Series(p_rel, trade.index)
     new_avg_profit = update_shelf('avg_profit', df)
 
     return new_avg_profit
@@ -187,18 +208,17 @@ def update_avg_rrr(trade):
     if rrr == 0:  # trade was a loss, no rrr update
         new_avg_rrr = user_data['avg_rrr'][-1]
     else:
-        df = pd.Series([rrr], pd.DatetimeIndex([t['date']]))
+        df = pd.Series(rrr, trade.index)
         new_avg_rrr = update_shelf('avg_rrr', df)
 
     return new_avg_rrr
 
 
 def update_avg_timespan(trade):
-    # TODO: Not 100% sure if adding and averaging times works, check it!
     t = trade.iloc[0]
-    delta = t['timespan']
+    delta = t['timespan (min)']
 
-    df = pd.Series([delta], pd.DatetimeIndex([t['date']]))
+    df = pd.Series(delta, trade.index)
     new_avg_timespan = update_shelf('avg_timespan', df)
 
     return new_avg_timespan
@@ -215,7 +235,8 @@ def update_total_profit(trade):
 
 
 def update_expectancy(trade):
-    # TODO: This function MUST be called AFTER update_total_profit. How to make sure that happens?
+    # NOTE: This function MUST be called AFTER update_total_profit.
+    # If you don't do this you update the expectancy with an old trade
     wins = user_data['n_wins']
     losses = user_data['n_losses']
 
@@ -230,24 +251,21 @@ def update_expectancy(trade):
         avg_win = user_data['total_gain'] / wins
 
     win_rate = user_data['win_rate'][-1]
-    data = user_data['expectancy']
-
-    t = trade.iloc[0]
     expectancy = avg_win*win_rate - (1-win_rate)*avg_loss
-    df = pd.Series([expectancy], pd.DatetimeIndex([t['date']]))
+
+    df = pd.Series(expectancy, trade.index)
+    data = user_data['expectancy']
     user_data['expectancy'] = data.append(df)
 
     return expectancy
 
 
 def update_capital(trade):
-    t = trade.iloc[0]
-
     cap_array = user_data['capital']
     p = profit_abs(trade)
     new_cap = cap_array[-1] + p
 
-    df = pd.Series([new_cap], pd.DatetimeIndex([t['date']]))
+    df = pd.Series(new_cap, trade.index)
     user_data['capital'] = cap_array.append(df)
 
     return new_cap
@@ -262,6 +280,7 @@ def update_user_data(trade):
     update_expectancy(trade)
     update_capital(trade)
     user_data['n_trades'] += 1
+    user_data.sync()
 
 
 def fill_trade(open_trade, close, note='-'):
@@ -273,8 +292,8 @@ def fill_trade(open_trade, close, note='-'):
     closed_trade['note'] = note
     closed_trade['exit'] = close
 
-    # Copy values that already exist:
-    for c in open_trade.columns:
+    # Copy values that already exist (except date because we will use the timespan):
+    for c in open_trade.drop(columns=['date']).columns:
         closed_trade[c] = t[c]
     # Fill in the remaining values:
     entry = t['entry']
@@ -285,8 +304,11 @@ def fill_trade(open_trade, close, note='-'):
     closed_trade['risk (%)'] = trade_risk(cap, closed_trade)
     closed_trade['RRR'] = risk_reward_ratio(closed_trade)
     closed_trade['cap. share (%)'] = entry*qty/cap*100
-    closed_trade['timespan'] = datetime.datetime.now() - t['date']
+    dt = datetime.datetime.now() - t['date']
+    minutes = round(dt.seconds / 60)
+    closed_trade['timespan (min)'] = minutes
 
+    closed_trade = closed_trade.round(2)
     return closed_trade
 
 
@@ -318,45 +340,34 @@ def remove_trade_from_records(record_file, idx):
     open_sheet = records['open']
     open_sheet.delete_rows(idx+2)
     records.save(record_file)
-    pass
-
-
-def capital_target(n_days):
-    """ Calculate the evolution of the capital over time with a constant profit each day. This is a target that a
-    trader can try to aim for.
-
-    INPUTS: month_profit - target profit (%) for a month
-            n_days - number of days to predict forwards
-    """
-    start_date = datetime.datetime.date(user_data['capital'].index[0])
-    d = pd.date_range(start_date, periods=n_days)
-
-    # Calculate the capital over time with a constant profit each day:
-    start_cap = user_data['capital'][0]
-    daily_profit = (1+month_profit_target)**(12/365.25)-1
-    v = np.ones(n_days)*(1+daily_profit)
-    cap_array = np.cumprod(v)*start_cap
-
-    prediction = pd.Series(cap_array, d)
-
-    return prediction
+    # ! THIS FUNCTION OVERWRITES THE RECORDS, DANGEROUS !
 
 
 if __name__ == '__main__':
+    # tr = pd.read_excel('diary.xlsx', sheet_name='closed')
+    # x = tr.iloc[[0]]
+    #
+    # update_user_data(x)
     # trades = pd.read_excel('diary.xlsx', sheet_name='open')
+    #
+    # close = 204
+    # note = 'tradeLib test'
+    #
+    # closed_trade = fill_trade(trades, close, note)
+    #
+    # write_trade_to_records('diary.xlsx', 'closed', closed_trade)
+    # remove_trade_from_records('diary.xlsx', 0)
 
-    remove_trade_from_records('diary.xlsx', 0)
+    import reset_shelf
+    user_data = shelve.open('user_data')
+    cap = user_data['capital']
 
-    # import reset_shelf
-    # user_data = shelve.open('user_data')
-    # cap = user_data['capital'][-1]
+    wl_rate = user_data['win_rate']
     # x = trades.tail(1)
     #
     # risk = trade_risk(cap, x)
     #
     # y = fill_trade(x, 201)
-    #
-    # update_user_data(y)
     #
     # pred = capital_target(200)
     #

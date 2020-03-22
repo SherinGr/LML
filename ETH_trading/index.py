@@ -16,12 +16,19 @@ app.layout = html.Div(
         dcc.Tabs(id='app_tabs', value='close', parent_className='custom-tabs', className='custom-tabs-container',
                  children=[
                         dcc.Tab(label='Open Trade', value='open',
-                                className='custom-tab', selected_className='custom-tab--selected'),
+                                className='custom-tab', selected_className='custom-tab--selected',
+                                style={'width': '33.3%'}, selected_style={'width': '66.7%'}
+                                ),
                         dcc.Tab(label='Close Trade', value='close',
-                                className='custom-tab', selected_className='custom-tab--selected'),
+                                className='custom-tab', selected_className='custom-tab--selected',
+                                style={'width': '33.3%'}, selected_style={'width': '66.7%'}
+                                ),
                         dcc.Tab(label='Performance', value='perf',
-                                className='custom-tab', selected_className='custom-tab--selected')
-                        ]
+                                className='custom-tab', selected_className='custom-tab--selected',
+                                style={'margin-right': '0', 'width': '33.3%'}, selected_style={'margin-right': '0',
+                                                                                               'width': '66.7%'}
+                                )
+                        ],
                  ),
         html.Div(id='tab_content')
     ]

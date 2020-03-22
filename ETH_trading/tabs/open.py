@@ -147,6 +147,8 @@ layout = html.Div(
                                     } for c in ['pair', 'direction']
                                 ],
                                 style_as_list_view=True,
+                                persistence=True,
+                                persisted_props=['data'],
                                 style_cell={'padding': '5px'},
                                 style_header={'background-color': 'white', 'font-weight': 'bold'}
                             ),
@@ -261,8 +263,7 @@ def calculate_size(clicks, entry, stop, max_risk, leverage):
     if clicks is None:
         pass
     else:
-        cap = user_data['capital'][-1]
-        return round(tl.max_qty(cap, entry, stop, max_risk, leverage), 4)
+        return round(tl.max_qty(entry, stop, max_risk, leverage), 4)
 
 
 # Callback for enter trade button:

@@ -33,6 +33,8 @@ layout = html.Div(
                             row_selectable='single',
                             selected_rows=[0],
                             style_as_list_view=True,
+                            persistence=True,
+                            persisted_props=['data'],
                             style_cell={'padding': '5px'},
                             style_header={'background-color': 'white', 'font-weight': 'bold'}
                         )
@@ -52,11 +54,9 @@ layout = html.Div(
 
                         html.Div(
                             [
-                                # html.P('Entry: -', id='entry_tag'),
                                 html.Pre('Exit Price: \t', style={'line-height': '2.5'}),
                                 dcc.Input(id='exit', placeholder=0, value=0, type='number', min=0,
                                           style={'width': '30%'}),
-
                             ],
                             style={'display': 'flex',  # 'justify-content': 'space-between',
                                    'vertical-align': 'center'}
@@ -107,6 +107,8 @@ layout = html.Div(
                         }
                     ],
                     style_as_list_view=True,
+                    # persistence=True,
+                    # persisted_props=['data'],
                     style_cell={'padding': '5px'},
                     style_header={'background-color': 'white', 'font-weight': 'bold'}
                 )
@@ -133,6 +135,8 @@ def close_trade(clicks, selected_row, close, note):
         # Retrieve the trade that we want to close:
         open_trades = tl.read_trades(record_file, 'open')
         trade = open_trades.iloc[selected_row]
+        # NOTE that trade is still a df and not a series, because we put a list inside iloc
+
         # Compute features of the closed trade:
         closed_trade = tl.fill_trade(trade, close, note)
         # Write the trade to the records:
@@ -141,6 +145,8 @@ def close_trade(clicks, selected_row, close, note):
         tl.remove_trade_from_records(record_file, selected_row[0])
         # Update the running average features:
         tl.update_user_data(closed_trade)
+
+        print(user_data['capital'])
 
         closed_trades = tl.read_trades(record_file, 'closed', dict_output=True)
         open_trades = tl.read_trades(record_file, 'open', dict_output=True)

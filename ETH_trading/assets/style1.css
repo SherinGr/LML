@@ -304,6 +304,7 @@ input[type="button"] {
   cursor: pointer;
   box-sizing: border-box;
   font-family: Dosis;
+  transition: 0.3s;
 }
 .button:hover,
 button:hover,
@@ -363,6 +364,11 @@ select {
   box-sizing: border-box;
   font-family: inherit;
   font-size: inherit; /*https://stackoverflow.com/questions/6080413/why-doesnt-input-inherit-the-font-from-body*/
+}
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 /* Removes awkward default styles on some inputs for iOS */
 input[type="email"],
