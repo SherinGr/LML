@@ -60,7 +60,7 @@ def serve_layout():
                                 html.Div(
                                     [
                                         html.P('Amount:'),
-                                        dcc.Input(id='qty', placeholder=0, type='number', value=np.nan, min=0,
+                                        dcc.Input(id='qty', placeholder=0, type='number', min=0,
                                                   style={'width': '90%', 'display': 'inline', 'height': '40px'})
                                     ],
                                     style={'width': '15%', 'display': 'inline-block', 'vertical-align': 'top'}
@@ -68,7 +68,7 @@ def serve_layout():
                                 html.Div(
                                     [
                                         html.P('Entry:'),
-                                        dcc.Input(id='entry', placeholder=0, type='number', value=np.nan, min=0,
+                                        dcc.Input(id='entry', placeholder=0, type='number', min=0,
                                                   style={'width': '90%', 'height': '40px'})
                                     ],
                                     style={'width': '15%', 'display': 'inline-block', 'vertical-align': 'top'}
@@ -76,7 +76,7 @@ def serve_layout():
                                 html.Div(
                                     [
                                         html.P('Stop loss:'),
-                                        dcc.Input(id='stop', placeholder=0, type='number', value=np.nan, min=0,
+                                        dcc.Input(id='stop', placeholder=0, type='number', min=0,
                                                   style={'width': '90%', 'height': '40px'})
                                     ],
                                     style={'width': '15%', 'display': 'inline-block', 'vertical-align': 'top'}
@@ -289,11 +289,15 @@ def calculate_size(clicks, entry, stop, max_risk, leverage):
                State('confidence', 'value')]
               )
 def submit_trade(clicks, pair, entry, qty, stop, idea, direction, confidence):
+    forgotten_input = [x == '' for x in [entry, qty, stop, idea, direction]]
+    print(forgotten_input)
+    print([entry, qty, stop])
     if clicks is None:
         trades = tl.read_trades(user_data['diary_file'], 'open', dict_output=True)
-    elif any(x == 0 for x in [entry, qty, stop]) or idea == '' or direction == '':
-        return 0
-        # TODO: You can use the placeholder property to indicate errors!
+    elif any(forgotten_input):
+        print('forgot some input')
+        trades = tl.read_trades(user_data['diary_file'], 'open', dict_output=True)
+        return trades, 'Missing', entry, 0, qty, 0, stop, '', '', 2, open_risk_string()
     else:
         # Add new trade at the top of the diary excel file:
         index = pd.DatetimeIndex([datetime.datetime.now()])

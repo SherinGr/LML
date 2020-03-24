@@ -3,8 +3,6 @@ import dash_html_components as html
 import dash_table
 from dash.dependencies import Input, Output, State
 
-import plotly.figure_factory as ff
-
 from app import app, user_data
 import tradelib as tl
 
@@ -22,6 +20,11 @@ stats_table_cols = [{'name': 'period', 'id': 'period'},
                     {'name': 'trades', 'id': 'trades'},
                     {'name': 'profit', 'id': 'P/L'}]
 
+features = [
+    {'label': 'Average profit', 'value': 'avg_profit'},
+    {'label': 'Expectancy', 'value': 'expectancy'}
+]
+
 
 def target_capital_data(n_days):
     d = tl.capital_target(n_days)
@@ -34,7 +37,7 @@ def target_capital_data(n_days):
     return data
 
 
-def shortlong_data():
+def shortlong_figure():
     trades = tl.read_trades(user_data['diary_file'], 'closed')
     shorts = trades[trades['direction'] == 'SHORT']
     longs = trades[trades['direction'] == 'LONG']
@@ -59,11 +62,95 @@ def shortlong_data():
          'marker': {'color': '#A83232'}
          }
     ]
-    return graph_data
+
+    figure = {
+        'data': graph_data,
+        'layout': dict(
+            barmode='stack',
+            margin={'l': 20, 'r': 15, 't': 10, 'b': 15},
+            height=250,
+            paper_bgcolor='#e8e8e8',
+            font={'family': 'Dosis', 'size': 13},
+            showlegend=False,
+        )
+    }
+    return figure
 
 
-def timespan_data():
-    pass
+def timespan_figure():
+    # Extract the timespans of winners and losers from the records:
+    trades = tl.read_trades(user_data['diary_file'], 'closed')
+    data = trades[['P/L (%)', 'timespan (min)']]
+
+    winners = data[data['P/L (%)'] >= 0]
+    losers = data[data['P/L (%)'] < 0]
+
+    win_spans = winners.drop(columns=['P/L (%)'])/60  # convert to hours
+    lose_spans = losers.drop(columns=['P/L (%)'])/60  # convert to hours
+
+    # Plot the histogram of this data:
+    graph_data = [
+        {
+            'x': list(win_spans.values.squeeze()),
+            'name': 'won',
+            'type': 'histogram',
+            'nbins': 10,
+            'histnorm': 'percent',
+            'opacity': '0.75',
+            'bingroup': 1,
+            'marker': {'color': '#3D9970'}
+        },
+        {
+            'x': list(lose_spans.values.squeeze()),
+            'name': 'lost',
+            'type': 'histogram',
+            'nbins': 10,
+            'histnorm': 'percent',
+            'opacity': '0.75',
+            'bingroup': 1,
+            'marker': {'color': '#A83232'}
+        }
+    ]
+
+    figure = {
+        'data': graph_data,
+        'layout': dict(
+            barmode='overlay',
+            margin={'l': 40, 'r': 15, 't': 10, 'b': 45},
+            height=250,
+            paper_bgcolor='#e8e8e8',
+            font={'family': 'Dosis', 'size': 13},
+            showlegend=False,
+            yaxis={'title': 'Win/Lose (%)'},
+            xaxis={'title': 'Time [h]'}
+        )
+    }
+    return figure
+
+
+def feature_figure():
+    figure = {
+        # Data is a list of dicts, each dict with x,y-data.
+        'data': [
+            {
+                'x': user_data['win_rate'].index,
+                'y': user_data['win_rate'].values,
+                'name': 'Capital',
+                'line': dict(shape='linear', width=2,
+                             color='#9DDCFA')
+            },
+        ],
+        'layout': dict(
+            # xaxis={'title': 'Date'},
+            yaxis={'type': 'lin', 'title': 'Capital ($)'},
+            margin={'l': 50, 'r': 15, 't': 10, 'b': 35},
+            height=350,
+            legend={'x': 0.04, 'y': 0.96},
+            paper_bgcolor='#e8e8e8',
+            font={'family': 'Dosis', 'size': 13}
+        )
+    }
+    return figure
 
 
 def serve_layout():
@@ -234,20 +321,10 @@ def serve_layout():
                             html.Div(
                                 [
                                     html.H5('Short/Long Performance', style={'line-height': '1', 'margin-bottom':
-                                        '10px'}),
+                                            '10px'}),
                                     dcc.Graph(
                                         id='shortlong_graph',
-                                        figure={
-                                            'data': shortlong_data(),
-                                            'layout': dict(
-                                                barmode='stack',
-                                                margin={'l': 20, 'r': 15, 't': 10, 'b': 15},
-                                                height=250,
-                                                paper_bgcolor='#e8e8e8',
-                                                font={'family': 'Dosis', 'size': 13},
-                                                showlegend=False,
-                                            )
-                                        }
+                                        figure=shortlong_figure()
                                     )
                                 ],
                                 className='pretty_container four columns',
@@ -261,14 +338,23 @@ def serve_layout():
 
                             html.Div(
                                 [
-                                  html.H1('TIMESPAN STACKED DISTPLOT', style={'line-height': '1'})
+                                    html.H5('Trade Duration Performance', style={'line-height': '1'}),
+                                    dcc.Graph(
+                                        id='timespan_graph',
+                                        figure=timespan_figure()
+                                    )
                                 ],
                                 className='pretty_container six columns',
                                 style={'margin-left': '0', 'margin-top': '0', 'margin-right': '0'}
                             ),
                             html.Div(
                                 [
-                                  html.H1('FEATURE OVER TIME PLOT', style={'line-height': '1'})
+                                    html.H5('Feature Evolution', style={'line-height': '1'}),
+                                    dcc.Dropdown(id='feature_choice', options=features, value='',),
+                                    dcc.Graph(
+                                        id='feature_graph',
+                                        figure=feature_figure()
+                                    )
                                 ],
                                 className='pretty_container six columns',
                                 style={'margin-top': '0', 'margin-right': '0'}
