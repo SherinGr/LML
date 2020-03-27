@@ -11,8 +11,6 @@ from app import client, user_data
 
 max_open_risk = 0.05  # 5%
 commission = 0.001  # 0.1%
-month_profit_target = 0.10  # 10%
-
 
 """ Dictionaries for dropdowns etc """
 
@@ -137,13 +135,15 @@ def risk_reward_ratio(trade):
     entry = t['entry']
     stop = t['stop']
     close = t['exit']
-    if close <= stop:
+    if close <= stop and t['direction'] == 'LONG':
+        return 0
+    elif close >= stop and t['direction'] == 'SHORT':
         return 0
     else:
         return abs((close-entry)/(entry-stop))
 
 
-def capital_target(n_days):
+def capital_target(n_days, month_profit_target):
     """ Calculate the evolution of the capital over time with a constant profit each day. This is a target that a
     trader can try to aim for.
 
@@ -155,7 +155,7 @@ def capital_target(n_days):
 
     # Calculate the capital over time with a constant profit each day:
     start_cap = user_data['capital'][0]
-    daily_profit = (1+month_profit_target)**(12/365.25)-1
+    daily_profit = (1+month_profit_target/100)**(12/365.25)-1
     v = np.ones(n_days)*(1+daily_profit)
     cap_array = np.cumprod(v)*start_cap/(1+daily_profit)
 
@@ -344,7 +344,20 @@ def remove_trade_from_records(record_file, idx):
 
 
 if __name__ == '__main__':
-    # tr = pd.read_excel('diary.xlsx', sheet_name='closed')
+    tr = pd.read_excel('diary.xlsx', sheet_name='closed')
+
+    # tr['date'] = tr['date'].apply(lambda x: datetime.datetime.date(x))
+
+    table_data = tr.loc[:, ['date', 'P/L (%)']]
+    table_data['P/L (%)'] = table_data['P/L (%)'] / 100 + 1
+
+    group = table_data.groupby(pd.Grouper(key='date', freq='D'))
+    merged = group.prod()
+    merged['count'] = group.count()
+
+    merged['period'] = merged.index
+    merged['period'] = merged['period'].apply(lambda x: datetime.datetime.strftime(x, '%Y %b'))
+
     # x = tr.iloc[[0]]
     #
     # update_user_data(x)
@@ -358,11 +371,11 @@ if __name__ == '__main__':
     # write_trade_to_records('diary.xlsx', 'closed', closed_trade)
     # remove_trade_from_records('diary.xlsx', 0)
 
-    import reset_shelf
-    user_data = shelve.open('user_data')
-    cap = user_data['capital']
-
-    wl_rate = user_data['win_rate']
+    # import reset_shelf
+    # user_data = shelve.open('user_data')
+    # cap = user_data['capital']
+    #
+    # wl_rate = user_data['win_rate']
     # x = trades.tail(1)
     #
     # risk = trade_risk(cap, x)

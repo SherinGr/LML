@@ -278,7 +278,8 @@ def calculate_size(clicks, entry, stop, max_risk, leverage):
                Output('type', 'value'),
                Output('direction', 'value'),
                Output('confidence', 'value'),
-               Output('open_risk', 'children')],
+               Output('open_risk', 'children'),
+               Output('enter_trade_button', 'style')],
               [Input('enter_trade_button', 'n_clicks')],
               [State('pair', 'value'),
                State('entry', 'value'),
@@ -289,15 +290,15 @@ def calculate_size(clicks, entry, stop, max_risk, leverage):
                State('confidence', 'value')]
               )
 def submit_trade(clicks, pair, entry, qty, stop, idea, direction, confidence):
-    forgotten_input = [x == '' for x in [entry, qty, stop, idea, direction]]
-    print(forgotten_input)
-    print([entry, qty, stop])
+    forgotten_input = [x == '' or x is None for x in [entry, qty, stop, idea, direction]]
+
     if clicks is None:
         trades = tl.read_trades(user_data['diary_file'], 'open', dict_output=True)
     elif any(forgotten_input):
-        print('forgot some input')
         trades = tl.read_trades(user_data['diary_file'], 'open', dict_output=True)
-        return trades, 'Missing', entry, 0, qty, 0, stop, '', '', 2, open_risk_string()
+        style = {'color': '#fc3003', 'border-color': '#fc3003'}
+        return trades, 'Missing!', entry, 'Missing!', qty, 'Missing!', stop, idea, direction, confidence, \
+            open_risk_string(), style
     else:
         # Add new trade at the top of the diary excel file:
         index = pd.DatetimeIndex([datetime.datetime.now()])
@@ -310,5 +311,5 @@ def submit_trade(clicks, pair, entry, qty, stop, idea, direction, confidence):
         tl.write_trade_to_records(user_data['diary_file'], 'open', trade)
         trades = tl.read_trades(user_data['diary_file'], 'open', dict_output=True)
 
-    return trades, 0, '', 0, '', 0, '', '', '', 2, open_risk_string()
+    return trades, 0, '', 0, '', 0, '', '', '', 2, open_risk_string(), {}
 

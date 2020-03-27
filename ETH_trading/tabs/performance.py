@@ -3,6 +3,9 @@ import dash_html_components as html
 import dash_table
 from dash.dependencies import Input, Output, State
 
+from datetime import datetime
+import pandas as pd
+
 from app import app, user_data
 import tradelib as tl
 
@@ -16,18 +19,23 @@ x_scale_options = [
     {'label': 'day', 'value': 'D'}
 ]
 
-stats_table_cols = [{'name': 'period', 'id': 'period'},
-                    {'name': 'trades', 'id': 'trades'},
-                    {'name': 'profit', 'id': 'P/L'}]
+summary_table_cols = [{'name': 'period', 'id': 'period'},
+                      {'name': 'trades', 'id': 'trades'},
+                      {'name': 'profit (%)', 'id': 'P/L (%)'}]
 
 features = [
     {'label': 'Average profit', 'value': 'avg_profit'},
-    {'label': 'Expectancy', 'value': 'expectancy'}
+    {'label': 'Expectancy', 'value': 'expectancy'},
+    {'label': 'Risk reward ratio', 'value': 'avg_rrr'},
+    {'label': 'Win rate', 'value': 'win_rate'},
+    {'label': 'Timespan', 'value': 'avg_timespan'}
 ]
 
+# TODO: Plot total profit and loss somewhere?
 
-def target_capital_data(n_days):
-    d = tl.capital_target(n_days)
+
+def target_capital_data(n_days, month_profit_target):
+    d = tl.capital_target(n_days, month_profit_target)
     data = dict(
         x=d.index,
         y=d.values,
@@ -116,41 +124,80 @@ def timespan_figure():
         'data': graph_data,
         'layout': dict(
             barmode='overlay',
-            margin={'l': 40, 'r': 15, 't': 10, 'b': 45},
-            height=250,
+            margin={'l': 40, 'r': 15, 't': 10, 'b': 35},
             paper_bgcolor='#e8e8e8',
             font={'family': 'Dosis', 'size': 13},
             showlegend=False,
             yaxis={'title': 'Win/Lose (%)'},
-            xaxis={'title': 'Time [h]'}
+            xaxis={'title': 'Time [h]'},
         )
     }
     return figure
 
 
-def feature_figure():
+def feature_figure(feature):
+    label_dict = {
+        'avg_profit': 'Average profit (%)',
+        'expectancy': 'Expectancy',
+        'avg_rrr': 'Average risk reward ratio',
+        'win_rate': 'Win rate (%)',
+        'avg_timespan': 'Average trade timespan (min)'
+    }
+
     figure = {
         # Data is a list of dicts, each dict with x,y-data.
         'data': [
             {
-                'x': user_data['win_rate'].index,
-                'y': user_data['win_rate'].values,
-                'name': 'Capital',
+                'x': user_data[feature].index,
+                'y': user_data[feature].values,
+                'name': 'feature',
                 'line': dict(shape='linear', width=2,
                              color='#9DDCFA')
             },
         ],
         'layout': dict(
             # xaxis={'title': 'Date'},
-            yaxis={'type': 'lin', 'title': 'Capital ($)'},
-            margin={'l': 50, 'r': 15, 't': 10, 'b': 35},
-            height=350,
+            yaxis={'type': 'lin', 'title': label_dict[feature]},
+            margin={'l': 50, 'r': 15, 't': 30, 'b': 35},
+            height=410,
             legend={'x': 0.04, 'y': 0.96},
             paper_bgcolor='#e8e8e8',
             font={'family': 'Dosis', 'size': 13}
         )
     }
     return figure
+
+
+def performance_indicators():
+    # TODO: Retrieve the values to input below
+    no_trades = len(user_data['capital']) - 1
+    days_traded = 0
+    avg_rrr = user_data['avg_rrr'][-1]
+
+    return [html.H5('Additional Performance Indicators', style={'line-height': '1', 'margin-bottom': '10px'}),
+            html.Div(
+            [
+                html.P('Average risk-reward ratio:'),
+                html.P('Average timespan:'),
+                html.P('Average size:'),
+                html.P('Average risk:'),
+                html.P('Average trades per day:'),
+                html.P('Short/long ratio:'),
+
+            ],
+            style={'width': '50%', 'display': 'inline-block'}
+            ),
+            html.Div(
+                [
+                    html.P('Total volume traded:'),
+                    html.P('Total Gain:'),
+                    html.P('Total Loss:'),
+                    html.P('Max loss:'),
+                    html.P('Max Win:')
+                ],
+                style={'width': '48%', 'display': 'inline-block'}
+            )
+            ]
 
 
 def serve_layout():
@@ -172,14 +219,13 @@ def serve_layout():
                                                           'margin-bottom': '10px'},
                                                    labelStyle={'margin-right': '10px'}),
                                     dash_table.DataTable(
-                                            id='stats_table',
-                                            columns=stats_table_cols,
+                                            id='summary_table',
+                                            columns=summary_table_cols,
                                             data=[],
                                             # style_table={
                                             #     'height': '400px',
                                             #     'overflow-y': 'scroll'
                                             # },
-                                            # You can use style conditional to color profitable and losing trades!
                                             style_cell_conditional=[{
                                                     'if': {'column_id': 'period'},
                                                     'text-align': 'left'
@@ -282,7 +328,7 @@ def serve_layout():
                                                                     'line': dict(shape='linear', width=2,
                                                                                  color='#9DDCFA')
                                                                 },
-                                                                target_capital_data(20)
+                                                                target_capital_data(31, 10)
                                                             ],
                                                             'layout': dict(
                                                                 # xaxis={'title': 'Date'},
@@ -312,9 +358,7 @@ def serve_layout():
                     html.Div(
                         [
                             html.Div(
-                                [
-                                    html.H5('Periodic Performance Indicators', style={'line-height': '1'})
-                                ],
+                                performance_indicators(),
                                 className='pretty_container eight columns',
                                 style={'margin-left': '0', 'margin-top': '0', 'margin-right': '0'}
                             ),
@@ -350,10 +394,10 @@ def serve_layout():
                             html.Div(
                                 [
                                     html.H5('Feature Evolution', style={'line-height': '1'}),
-                                    dcc.Dropdown(id='feature_choice', options=features, value='',),
+                                    dcc.Dropdown(id='feature_choice', options=features, value='win_rate'),
                                     dcc.Graph(
                                         id='feature_graph',
-                                        figure=feature_figure()
+                                        figure=feature_figure('win_rate')
                                     )
                                 ],
                                 className='pretty_container six columns',
@@ -371,6 +415,9 @@ def serve_layout():
                Input('y_opt', 'value')]
               )
 def update_capital_target(target_profit, y_scale_type):
+
+    n_days = 31  # HARDCODED CONSTANT !
+
     figure = {
         # Data is a list of dicts, each dict with x,y-data.
         'data': [
@@ -381,7 +428,7 @@ def update_capital_target(target_profit, y_scale_type):
                 'line': dict(shape='linear', width=2,
                              color='#9DDCFA')
             },
-            target_capital_data(target_profit)
+            target_capital_data(n_days, target_profit)
         ],
         'layout': dict(
             # xaxis={'title': 'Date'},
@@ -394,3 +441,38 @@ def update_capital_target(target_profit, y_scale_type):
         )
     }
     return figure
+
+
+@app.callback(Output('feature_graph', 'figure'),
+              [Input('feature_choice', 'value')])
+def update_feature_graph(feature):
+    return feature_figure(feature)
+
+
+@app.callback(Output('summary_table', 'data'),
+              [Input('timespan', 'value')])
+def update_summary_table(timedelta):
+    trades = pd.read_excel(user_data['diary_file'], sheet_name='closed')
+    # Throw away unnecessary columns and convert percents to demicals
+    t = trades.loc[:, ['date', 'P/L (%)']]
+    t['P/L (%)'] = t['P/L (%)'] / 100 + 1
+    # Group dataframe by the appropriate frequency (Day, Week, Month)
+    grouped = t.groupby(pd.Grouper(key='date', freq=timedelta))
+    # Get total profit and number of trades:
+    merged = grouped.prod()
+    merged['trades'] = grouped.count()
+    # Remove zero columns:
+    # Note: decided not to do this yet
+
+    # Convert back to percentages:
+    merged['P/L (%)'] = round((merged['P/L (%)'] - 1) * 100, 2)
+    # Add period descriptor:
+    merged['period'] = merged.index.date
+    if timedelta == 'D':
+        pass
+    elif timedelta == 'W':
+        merged['period'] = merged['period'].apply(lambda x: datetime.strftime(x, '%Y W-%W'))
+    elif timedelta == 'M':
+        merged['period'] = merged['period'].apply(lambda x: datetime.strftime(x, '%b %Y'))
+
+    return merged.to_dict(orient='records')

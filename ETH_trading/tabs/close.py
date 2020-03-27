@@ -119,7 +119,9 @@ def serve_layout():
             )
 
 
-@app.callback([Output('closed_table', 'data'), Output('open_table2', 'data')],
+@app.callback([Output('closed_table', 'data'),
+               Output('open_table2', 'data'),
+               Output('close_trade_button', 'style')],
               [Input('close_trade_button', 'n_clicks')],
               [State('open_table2', 'selected_rows'),
                State('exit', 'value'),
@@ -129,6 +131,11 @@ def close_trade(clicks, selected_row, close, note):
     if clicks is None:
         closed_trades = tl.read_trades(record_file, 'closed', dict_output=True)
         open_trades = tl.read_trades(record_file, 'open', dict_output=True)
+
+    elif close is None:
+        closed_trades = tl.read_trades(record_file, 'closed', dict_output=True)
+        open_trades = tl.read_trades(record_file, 'open', dict_output=True)
+        style = {'color': '#fc3003', 'border-color': '#fc3003'}
     else:
         # Retrieve the trade that we want to close:
         open_trades = tl.read_trades(record_file, 'open')
@@ -147,4 +154,6 @@ def close_trade(clicks, selected_row, close, note):
         closed_trades = tl.read_trades(record_file, 'closed', dict_output=True)
         open_trades = tl.read_trades(record_file, 'open', dict_output=True)
 
-    return closed_trades, open_trades
+        style = {}
+
+    return closed_trades, open_trades, style
