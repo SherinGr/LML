@@ -169,31 +169,46 @@ def feature_figure(feature):
 
 
 def performance_indicators():
-    # TODO: Retrieve the values to input below
-    no_trades = len(user_data['capital']) - 1
-    days_traded = 0
+    total_loss = user_data['total_loss']
+    total_gain = user_data['total_gain']
     avg_rrr = user_data['avg_rrr'][-1]
+    avg_timespan = user_data['avg_timespan'][-1]/60
+
+    trades = tl.read_trades(user_data['diary_file'], 'closed')
+    size = trades['cap. share (%)'].mean()
+    risk = trades['risk (%)'].mean()
+
+    no_trades = len(trades)
+    no_shorts = len(trades[trades['direction'] == 'SHORT'])
+    no_longs = len(trades[trades['direction'] == 'LONG'])
+    days_traded = trades['date'][0]-trades['date'][len(trades)-1]
+    trades_per_day = no_trades/days_traded.days
+    shortlongratio = no_shorts/no_longs
+
+    total_volume = 0
+    max_loss = 0
+    max_win = 0
+    # TODO
 
     return [html.H5('Additional Performance Indicators', style={'line-height': '1', 'margin-bottom': '10px'}),
             html.Div(
             [
-                html.P('Average risk-reward ratio:'),
-                html.P('Average timespan:'),
-                html.P('Average size:'),
-                html.P('Average risk:'),
-                html.P('Average trades per day:'),
-                html.P('Short/long ratio:'),
-
+                html.Pre('Average risk-reward ratio: \t {:.2f}'.format(avg_rrr)),
+                html.Pre('Average timespan: \t \t {:.1f}h'.format(avg_timespan)),
+                html.Pre('Average size: \t {:.0f}%'.format(size)),
+                html.Pre('Average risk: \t {:.1f}%'.format(risk)),
+                html.Pre('Average trades per day: {:.1f}'.format(trades_per_day)),
+                html.Pre('Short/long ratio: {:.1f}'.format(shortlongratio)),
             ],
             style={'width': '50%', 'display': 'inline-block'}
             ),
             html.Div(
                 [
-                    html.P('Total volume traded:'),
-                    html.P('Total Gain:'),
-                    html.P('Total Loss:'),
-                    html.P('Max loss:'),
-                    html.P('Max Win:')
+                    html.Pre('Total volume traded: {:.2f}$'.format(total_volume)),
+                    html.Pre('Total Gain: \t {:.2f}$'.format(total_gain)),
+                    html.Pre('Total Loss: \t {:.2f}$'.format(total_loss)),
+                    html.Pre('Max loss: \t {:.2f}%'.format(max_loss)),
+                    html.Pre('Max Win: \t {:.2f}%'.format(max_win))
                 ],
                 style={'width': '48%', 'display': 'inline-block'}
             )
