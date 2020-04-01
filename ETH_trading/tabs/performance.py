@@ -20,8 +20,8 @@ x_scale_options = [
 ]
 
 summary_table_cols = [{'name': 'period', 'id': 'period'},
-                      {'name': 'trades', 'id': 'trades'},
-                      {'name': 'profit (%)', 'id': 'P/L (%)'}]
+                      {'name': '#', 'id': 'trades'},
+                      {'name': 'P/L (%)', 'id': 'P/L (%)'}]
 
 features = [
     {'label': 'Average profit', 'value': 'avg_profit'},
@@ -30,8 +30,6 @@ features = [
     {'label': 'Win rate', 'value': 'win_rate'},
     {'label': 'Timespan', 'value': 'avg_timespan'}
 ]
-
-# TODO: Plot total profit and loss somewhere?
 
 
 def target_capital_data(n_days, month_profit_target):
@@ -181,36 +179,50 @@ def performance_indicators():
     no_trades = len(trades)
     no_shorts = len(trades[trades['direction'] == 'SHORT'])
     no_longs = len(trades[trades['direction'] == 'LONG'])
-    days_traded = trades['date'][0]-trades['date'][len(trades)-1]
-    trades_per_day = no_trades/days_traded.days
+
+    days_traded = trades['date'].apply(lambda x: datetime.date(x)).nunique()
+
+    trades_per_day = no_trades/days_traded
     shortlongratio = no_shorts/no_longs
 
-    total_volume = 0
-    max_loss = 0
-    max_win = 0
-    # TODO
+    entry = trades['entry']
+    qty = trades['size']
+    total_volume = sum(entry.mul(qty))
+    max_loss = trades['P/L (%)'].min()
+    max_win = trades['P/L (%)'].max()
 
-    return [html.H5('Additional Performance Indicators', style={'line-height': '1', 'margin-bottom': '10px'}),
-            html.Div(
-            [
-                html.Pre('Average risk-reward ratio: \t {:.2f}'.format(avg_rrr)),
-                html.Pre('Average timespan: \t \t {:.1f}h'.format(avg_timespan)),
-                html.Pre('Average size: \t {:.0f}%'.format(size)),
-                html.Pre('Average risk: \t {:.1f}%'.format(risk)),
-                html.Pre('Average trades per day: {:.1f}'.format(trades_per_day)),
-                html.Pre('Short/long ratio: {:.1f}'.format(shortlongratio)),
-            ],
-            style={'width': '50%', 'display': 'inline-block'}
-            ),
+    efficiency = (total_gain-total_loss)/total_volume*100
+
+    return [html.H5('Additional Performance Indicators',
+                    style={'margin-bottom': '20px'}),
             html.Div(
                 [
-                    html.Pre('Total volume traded: {:.2f}$'.format(total_volume)),
-                    html.Pre('Total Gain: \t {:.2f}$'.format(total_gain)),
-                    html.Pre('Total Loss: \t {:.2f}$'.format(total_loss)),
-                    html.Pre('Max loss: \t {:.2f}%'.format(max_loss)),
-                    html.Pre('Max Win: \t {:.2f}%'.format(max_win))
+                    html.Div(
+                        [
+                            html.Pre('Average trades per day:\t {:.1f}'.format(trades_per_day)),
+                            html.Pre('Average timespan: \t \t {:.1f} h'.format(avg_timespan)),
+                            html.Pre('Average r2r: \t \t \t {:.2f}'.format(avg_rrr)),
+                            html.Pre('Average size: \t \t \t {:.0f} %'.format(size)),
+                            html.Pre('Average risk: \t \t \t {:.1f} %'.format(risk)),
+                            html.Pre('Short/long ratio: \t \t {:.1f}'.format(shortlongratio)),
+                        ],
+                        style={'width': '50%', 'display': 'flex', 'flex-flow': 'column',
+                               'justify-content': 'space-between'}
+                    ),
+                    html.Div(
+                        [
+                            html.Pre('Efficiency: \t \t \t \t {:.2f} %'.format(efficiency)),
+                            html.Pre('Total volume traded: \t {:.2f} $'.format(total_volume)),
+                            html.Pre('Total Gain: \t \t \t \t {:.2f} $'.format(total_gain)),
+                            html.Pre('Total Loss: \t \t \t \t {:.2f} $'.format(total_loss)),
+                            html.Pre('Max loss:\t \t \t \t{:.2f} %'.format(max_loss)),
+                            html.Pre('Max Win: \t \t \t \t  {:.2f} %'.format(max_win))
+                        ],
+                        style={'width': '50%', 'display': 'flex', 'flex-flow': 'column',
+                               'justify-content': 'space-between'}
+                    )
                 ],
-                style={'width': '48%', 'display': 'inline-block'}
+                style={'display': 'flex', 'height': '80%', 'overflow': 'auto'}
             )
             ]
 
@@ -228,7 +240,7 @@ def serve_layout():
                         [
                             html.Div(
                                 [
-                                    html.H5('Trades and Profits', style={'line-height': '0.5'}),
+                                    html.H5('Trades and Profits'),
                                     dcc.RadioItems(id='timespan', options=tl.spans, value='D',
                                                    style={'display': 'flex', 'margin-top': '0px',
                                                           'margin-bottom': '10px'},
@@ -237,10 +249,11 @@ def serve_layout():
                                             id='summary_table',
                                             columns=summary_table_cols,
                                             data=[],
-                                            # style_table={
-                                            #     'height': '400px',
-                                            #     'overflow-y': 'scroll'
-                                            # },
+                                            style_table={
+                                                # 'height': '400px',
+                                                'overflow-y': 'scroll',
+                                                'overflow-x': 'scroll'
+                                            },
                                             style_cell_conditional=[{
                                                     'if': {'column_id': 'period'},
                                                     'text-align': 'left'
@@ -253,7 +266,7 @@ def serve_layout():
                                         ),
                                 ],
                                 className='pretty_container four columns',
-                                style={'margin-left': '0'}
+                                style={'margin-left': '0', 'padding-top': '5px'}
                             ),
                             html.Div(
                                 [
@@ -301,31 +314,36 @@ def serve_layout():
                                             )
                                         ],
                                         className='row container-display',
-                                        style={'display': 'flex-inline', 'justify-content': 'space-between', 'margin-right': '0'}
+                                        style={'display': 'flex-inline', 'justify-content': 'space-between',
+                                               'margin-right': '0'}
                                     ),
                                     html.Div(
                                         [
-                                            html.H5('Capital Tracking', style={'text-align': 'center', 'line-height': '0.5'}),
+                                            html.H5('Capital Tracking', style={'text-align': 'center'}),
                                             html.Div(
                                                 [
                                                     html.Div(
                                                         [
-                                                            dcc.RadioItems(id='y_opt', options=y_scale_options, value='lin',
-                                                                           style={'display': 'flex', 'margin-top': '0px',
-                                                                                  'margin-bottom': '0'},
-                                                                           labelStyle={'margin-right': '10px'}),
+                                                            html.P('Monhtly profit target (%):',
+                                                                   style={'display': 'inline', 'margin-right': '10px'}),
+                                                            dcc.Input(id='monthly_target_profit', type='number',
+                                                                      value=10,
+                                                                      style={'margin': '0', 'width': '50px', 'display':
+                                                                             'inline', 'height': '25px'})
                                                         ],
                                                     ),
                                                     html.Div(
                                                         [
-                                                            html.P('Monhtly profit target (%):', style={'display': 'inline',
-                                                                                                        'margin-right': '10px'}),
-                                                            dcc.Input(id='monthly_target_profit', type='number', value=10,
-                                                                      style={'margin': '0', 'width': '50px', 'display':
-                                                                             'inline', 'height': '25px'})
+                                                            dcc.RadioItems(id='y_opt', options=y_scale_options,
+                                                                           value='lin',
+                                                                           style={'display': 'flex',
+                                                                                  'margin-top': '0px',
+                                                                                  'margin-bottom': '0'},
+                                                                           labelStyle={'margin-right': '10px'}),
                                                         ],
                                                         style={'margin-right': '15px'}
-                                                    )
+                                                    ),
+
                                                 ],
                                                 style={'display': 'flex', 'justify-content': 'space-between'}
                                             ),
@@ -361,7 +379,8 @@ def serve_layout():
                                             ),
                                         ],
                                         className='pretty_container',
-                                        style={'margin-left': '0', 'margin-right': '0', 'margin-top': '0'}
+                                        style={'margin-left': '0', 'margin-right': '0', 'margin-top': '0',
+                                               'padding-top': '5px'}
                                     )
                                 ],
                                 className='eight columns',
@@ -375,19 +394,19 @@ def serve_layout():
                             html.Div(
                                 performance_indicators(),
                                 className='pretty_container eight columns',
-                                style={'margin-left': '0', 'margin-top': '0', 'margin-right': '0'}
+                                style={'margin-left': '0', 'margin-top': '0',
+                                       'flex-flow': 'column', 'padding-top': '5px'}
                             ),
                             html.Div(
                                 [
-                                    html.H5('Short/Long Performance', style={'line-height': '1', 'margin-bottom':
-                                            '10px'}),
+                                    html.H5('Short/Long Performance', style={'margin-bottom': '10px'}),
                                     dcc.Graph(
                                         id='shortlong_graph',
                                         figure=shortlong_figure()
                                     )
                                 ],
                                 className='pretty_container four columns',
-                                style={'margin-top': '0', 'margin-right': '0'}
+                                style={'margin-top': '0', 'margin-right': '0', 'margin-left': '0', 'padding-top': '5px'}
                             )
                         ],
                         className='row flex-display',
@@ -397,18 +416,18 @@ def serve_layout():
 
                             html.Div(
                                 [
-                                    html.H5('Trade Duration Performance', style={'line-height': '1'}),
+                                    html.H5('Trade Duration Performance'),
                                     dcc.Graph(
                                         id='timespan_graph',
                                         figure=timespan_figure()
                                     )
                                 ],
                                 className='pretty_container six columns',
-                                style={'margin-left': '0', 'margin-top': '0', 'margin-right': '0'}
+                                style={'margin-left': '0', 'margin-top': '0', 'padding-top': '5px'}
                             ),
                             html.Div(
                                 [
-                                    html.H5('Feature Evolution', style={'line-height': '1'}),
+                                    html.H5('Feature Evolution'),
                                     dcc.Dropdown(id='feature_choice', options=features, value='win_rate'),
                                     dcc.Graph(
                                         id='feature_graph',
@@ -416,7 +435,7 @@ def serve_layout():
                                     )
                                 ],
                                 className='pretty_container six columns',
-                                style={'margin-top': '0', 'margin-right': '0'}
+                                style={'margin-top': '0', 'margin-left': '0', 'margin-right': '0', 'padding-top': '5px'}
                             )
                         ],
                         className='row flex-display'
@@ -489,5 +508,7 @@ def update_summary_table(timedelta):
         merged['period'] = merged['period'].apply(lambda x: datetime.strftime(x, '%Y W-%W'))
     elif timedelta == 'M':
         merged['period'] = merged['period'].apply(lambda x: datetime.strftime(x, '%b %Y'))
+    # Flip dataFrame with newest data on top instead of bottom:
+    merged = merged.iloc[::-1]
 
     return merged.to_dict(orient='records')

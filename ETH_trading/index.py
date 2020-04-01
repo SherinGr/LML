@@ -6,6 +6,8 @@ from dash.dependencies import Input, Output
 from app import app
 from tabs import open, close, performance
 
+import webbrowser
+
 app.layout = html.Div(
     [
         html.Div(id="output-clientside"),
@@ -14,6 +16,7 @@ app.layout = html.Div(
         html.H5("Good records are the key to consistent profits",
                 style={'margin-top': '0', 'color': '#fafafa', 'text-align': 'center'}),
         dcc.Tabs(id='app_tabs', value='perf', parent_className='custom-tabs', className='custom-tabs-container',
+                 mobile_breakpoint=600,
                  children=[
                         dcc.Tab(label='Open Trade', value='open',
                                 className='custom-tab', selected_className='custom-tab--selected',
@@ -51,4 +54,6 @@ def render_content(tab):
 
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    webbrowser.open('http://127.0.0.1:8050/', new=2)
+    app.run_server()
+

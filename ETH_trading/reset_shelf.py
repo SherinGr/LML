@@ -26,6 +26,5 @@ user_data['avg_profit'] = pd.Series(0, pd.DatetimeIndex([datetime.datetime.now()
 user_data['avg_rrr'] = pd.Series(1, pd.DatetimeIndex([datetime.datetime.now()]))
 user_data['avg_timespan'] = pd.Series(60, pd.DatetimeIndex([datetime.datetime.now()]))
 
-
 user_data.close()
 

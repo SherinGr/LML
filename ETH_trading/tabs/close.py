@@ -16,7 +16,7 @@ def serve_layout():
                             html.Div(id='selected_trade', style={'visibility': 'hidden'}),
                             html.Div(
                                 [
-                                    html.H6('Select A Position To Close:', style={'margin-bottom': '10px'}),
+                                    html.H5('Select Position To Close:', style={'margin-bottom': '10px'}),
                                     dash_table.DataTable(
                                         id='open_table2',
                                         columns=tl.open_trade_dict,
@@ -40,14 +40,14 @@ def serve_layout():
                                     )
                                 ],
                                 className='pretty_container seven columns',
-                                style={'margin-left': '0'}
+                                style={'margin-left': '0', 'padding-top': '5px'}
                             ),
                             html.Div(
                                 [
                                     html.Div(
                                         [
-                                            html.H6('Close Position:', style={'margin-bottom': '20px'}),
-                                            html.Button('Close', id='close_trade_button')
+                                            html.H5('Close Position:', style={'margin-bottom': '20px'}),
+                                            html.Button('Close', id='close_trade_button', style={'margin-top': '10px'})
                                         ],
                                         style={'justify-content': 'space-between', 'display': 'flex'}
                                     ),
@@ -65,14 +65,14 @@ def serve_layout():
                                     dcc.Input(id='note', style={'width': '100%'}, value='')
                                 ],
                                 className='pretty_container five columns',
-                                style={'margin-right': '0', 'margin-left': '0'}
+                                style={'margin-right': '0', 'margin-left': '0', 'padding-top': '5px'}
                             )
                         ],
                         className='row flex-display',
                     ),
                     html.Div(
                         [
-                            html.H6('Closed Trades:'),
+                            html.H5('Closed Trades:'),
                             dash_table.DataTable(
                                 id='closed_table',
                                 columns=tl.closed_trade_dict,
@@ -112,7 +112,7 @@ def serve_layout():
                             )
                         ],
                         className='pretty_container twelve columns',
-                        style={'margin-top': '0'}
+                        style={'margin-top': '0', 'padding-top': '5px'}
                     )
 
                 ],

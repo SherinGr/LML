@@ -87,28 +87,10 @@ body {
 }
 .custom-tab--selected {
     color: #9DDCFA;
-    /*box-shadow: 1px 1px 0px white;*/
     border-left: 0px solid lightgrey !important;
     border-right: 0px solid lightgrey !important;
     border-top: 3px solid #9DDCFA !important;
     border-bottom: 0px;
-}
-
-#individual_graph,
-#aggregate_graph {
-  width: calc(100% - 30px);
-  position: absolute;
-}
-
-#count_graph {
-  position: absolute;
-  height: calc(100% - 30px);
-  width: calc(100% - 30px);
-}
-
-#countGraphContainer {
-  flex: 5;
-  position: relative;
 }
 
 .mini_container {
@@ -118,13 +100,4 @@ body {
   padding: 10px;
   position: relative;
   box-shadow: 2px 2px 2px black;
-}
-
-#right-column {
-  display: flex;
-  flex-direction: column;
-}
-
-#wells {
-  flex: 1;
 }

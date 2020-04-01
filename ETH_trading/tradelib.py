@@ -21,9 +21,10 @@ pairs = [
          ]
 
 types = [
-    {'label': 'pullback to value', 'value': 'pullback to value'},
+    {'label': 'Pullback to value', 'value': 'Pullback to value'},
     {'label': 'ATR extreme', 'value': 'ATR extreme'},
-    {'label': 'price rejection', 'value': 'price rejection'}
+    {'label': 'Price rejection', 'value': 'Price rejection'},
+    {'label': 'Breakout FOMO', 'value': 'Breakout FOMO'}
 ]
 
 directions = [
@@ -346,17 +347,18 @@ def remove_trade_from_records(record_file, idx):
 if __name__ == '__main__':
     tr = pd.read_excel('diary.xlsx', sheet_name='closed')
 
+    #n = count_trading_days('diary.xlsx')
     # tr['date'] = tr['date'].apply(lambda x: datetime.datetime.date(x))
-
-    table_data = tr.loc[:, ['date', 'P/L (%)']]
-    table_data['P/L (%)'] = table_data['P/L (%)'] / 100 + 1
-
-    group = table_data.groupby(pd.Grouper(key='date', freq='D'))
-    merged = group.prod()
-    merged['count'] = group.count()
-
-    merged['period'] = merged.index
-    merged['period'] = merged['period'].apply(lambda x: datetime.datetime.strftime(x, '%Y %b'))
+    #
+    # table_data = tr.loc[:, ['date', 'P/L (%)']]
+    # table_data['P/L (%)'] = table_data['P/L (%)'] / 100 + 1
+    #
+    # group = table_data.groupby(pd.Grouper(key='date', freq='D'))
+    # merged = group.prod()
+    # merged['count'] = group.count()
+    #
+    # merged['period'] = merged.index
+    # merged['period'] = merged['period'].apply(lambda x: datetime.datetime.strftime(x, '%Y %b'))
 
     # x = tr.iloc[[0]]
     #

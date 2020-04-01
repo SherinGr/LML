@@ -48,7 +48,7 @@ def serve_layout():
                     html.Div([
                         html.Div(
                             [
-                                html.H6('Add New Trade:'),
+                                html.H5('Add New Trade:'),
                                 html.Div(
                                     [
                                         html.P('Pair:'),
@@ -121,7 +121,7 @@ def serve_layout():
                                 )
                             ],
                             className="pretty_container twelve columns",
-                            style={'margin-right': '0'},
+                            style={'margin-right': '0', 'padding-top': '5px'},
                             id="enter-trade"
                             ),
                         ],
@@ -131,7 +131,7 @@ def serve_layout():
                     html.Div([
                         html.Div(
                             [
-                                html.H6('Open Positions:', style={'margin-bottom': '10px'}),
+                                html.H5('Open Positions:', style={'margin-bottom': '10px'}),
                                 dash_table.DataTable(
                                     id='open_table',
                                     columns=tl.open_trade_dict,
@@ -163,13 +163,13 @@ def serve_layout():
                                 )
                             ],
                             className="pretty_container seven columns",
-                            style={'margin-left': '0', 'margin-top': '0'},
+                            style={'margin-left': '0', 'margin-top': '0', 'padding-top': '5px'},
                             id="open-positions"
                         ),
                         # CONTAINER FOR CALCULATING TRADE SIZE
                         html.Div(
                             [
-                                html.H6('Calculate Position Size:'),
+                                html.H5('Calculate Position Size:'),
                                 html.Div(
                                     [
                                         html.Div(
@@ -236,7 +236,7 @@ def serve_layout():
                                 )
                             ],
                             className="pretty_container five columns",
-                            style={'margin-right': '0', 'margin-left': '0', 'margin-top': '0'},
+                            style={'margin-right': '0', 'margin-left': '0', 'margin-top': '0', 'padding-top': '5px'},
                             id="calculate_size"
                         )
                         ],

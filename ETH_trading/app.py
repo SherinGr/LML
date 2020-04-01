@@ -12,4 +12,3 @@ client = Client(api_key, secret_key)
 
 app = dash.Dash(__name__)
 app.config.suppress_callback_exceptions = True
-
